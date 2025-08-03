@@ -1,11 +1,11 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
-import express from "express";
 import session from "express-session";
 import bcrypt from "bcrypt";
-import connectPg from "connect-pg-simple";
-import { storage } from "./storage";
+import { storage } from "./storage-memory";
 import { insertUserSchema } from "@shared/schema";
+import MemoryStore from 'memorystore';
+const MemStore = MemoryStore(session);
 
 // Extension du type Session pour inclure userId
 declare module "express-session" {
@@ -22,7 +22,7 @@ const requireAuth = (req: Request, res: Response, next: NextFunction) => {
     next();
 };
 
-// Wrapper simple pour gérer les erreurs async sans problème de typage
+// Wrapper simple pour gérer les erreurs async
 const handleAsync = (fn: Function) => {
     return (req: Request, res: Response, next: NextFunction) => {
         Promise.resolve(fn(req, res, next)).catch((error: any) => {
@@ -38,23 +38,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     // Trust proxy pour rate limiting
     app.set("trust proxy", 1);
 
-    // Configuration des sessions
-    const pgStore = connectPg(session);
-    app.use(session({
-        store: new pgStore({
-            conString: process.env.DATABASE_URL,
-            createTableIfMissing: true,
-        }),
-        secret: process.env.SESSION_SECRET!,
-        resave: false,
-        saveUninitialized: false,
-        cookie: {
-            secure: false,
-            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 jours
-        },              
-    }));
+    // Configuration des sessions SIMPLE sans connect-pg-simple pour éviter path-to-regexp
+app.use(session({
+    store: new MemStore({
+        checkPeriod: 86400000 // 24 heures
+    }),
+secret: process.env.SESSION_SECRET || 'secret-local-development',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        secure: false,
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+    },
+}));
 
-    // Routes d'authentification sans asyncHandler
+    // Routes d'authentification
     app.post("/api/register", handleAsync(async (req: Request, res: Response) => {
         const validation = insertUserSchema.safeParse(req.body);
         if (!validation.success) {

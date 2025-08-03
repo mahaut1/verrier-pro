@@ -1,5 +1,5 @@
-import { users, type User, type InsertUser } from "@/shared/schema";
-import { db } from "@/server/db";
+import { users, type User, type InsertUser } from "@shared/schema";
+import { db } from "./db";
 import { eq } from "drizzle-orm";
 
 export interface IStorage {
@@ -9,20 +9,20 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
-async getUser(id: number): Promise<User | undefined> {
-    const [user]= await db.select().from(users).where(eq(users.id, id));
-    return user || undefined;
-}
+    async getUser(id: number): Promise<User | undefined> {
+        const [user] = await db.select().from(users).where(eq(users.id, id));
+        return user || undefined;
+    }
 
-async getUserByUsername(username: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.username, username));
-    return user || undefined;
-}
+    async getUserByUsername(username: string): Promise<User | undefined> {
+        const [user] = await db.select().from(users).where(eq(users.username, username));
+        return user || undefined;
+    }
 
-async createUser(user: InsertUser): Promise<User> {
-    const [newUser] = await db.insert(users).values(user).returning();
-    return newUser;
-}
+    async createUser(user: InsertUser): Promise<User> {
+        const [newUser] = await db.insert(users).values(user).returning();
+        return newUser;
+    }
 }
 
 export const storage = new DatabaseStorage();
