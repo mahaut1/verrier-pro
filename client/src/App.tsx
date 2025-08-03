@@ -8,7 +8,7 @@ import Register from "./pages/register";
 import Home from "./pages/Home";
 
 function AuthenticatedApp() {
-    const { user, isLoading, isAuthenticated } = useAuth();
+    const {  isLoading, isAuthenticated } = useAuth();
     const [currentPage, setCurrentPage] = useState<'login' | 'register'>('login');
     
     if (isLoading) {

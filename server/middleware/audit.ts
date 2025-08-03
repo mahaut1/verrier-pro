@@ -17,7 +17,7 @@ export const auditMiddleware = (req: Request, res: Response, next: NextFunction)
 
 //Audit pour les actions critiques
 export const criticalActionAudit=(action:string) => {
-    return (req: Request, res: Response, next: NextFunction) => {
+    return (req: Request, next: NextFunction) => {
         const userId = req.session?.userId;
         console.log(`[AUDIT CRITICAL] ${new Date().toISOString()} User ${userId}: ${action} - ${req.method}-${req.path}}`);
         next();

@@ -3,9 +3,9 @@ import type { NextFunction, Request, Response } from 'express';
 //Gestion centralisée des erreurs
 export const errorHandler = (
     err: Error & { status?: number; statusCode?: number },
-    req: Request,
+    
     res: Response,
-    next: NextFunction
+  
 ) => {
     console.error('Error:', err);
 const status= err.status || err.statusCode || 500;
@@ -15,7 +15,7 @@ const message = status === 500
 };
 
 // Gestionnaire des routes non trouvées
-export const notFoundHandler = (req: Request, res: Response) => {
+export const notFoundHandler = ( res: Response) => {
     res.status(404).json({
          message: 'Ressource non trouvée',
          details: 'La route ${req.method} ${req.path} n\'existe pas.'
