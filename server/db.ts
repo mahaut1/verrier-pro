@@ -1,60 +1,50 @@
-// server/db.ts
-// Utilise pg (node-postgres) en local/Docker et Neon seulement si Railway/Neon est détecté.
+// server/db.ts — 100% pg (node-postgres), compatible local + Railway
+import { Pool } from "pg";
+import { drizzle } from "drizzle-orm/node-postgres";
+import * as schema from "@shared/schema";
 
-import { Pool as NeonPool, neonConfig } from '@neondatabase/serverless';
-import { drizzle as drizzleNeon } from 'drizzle-orm/neon-serverless';
-import { Pool as PgPool } from 'pg';
-import { drizzle as drizzlePg } from 'drizzle-orm/node-postgres';
-import ws from 'ws';
-import * as schema from '@shared/schema';
+// --- ENV ---
+const url = process.env.DATABASE_URL;
+if (!url) throw new Error("DATABASE_URL manquante");
 
-const url = process.env.DATABASE_URL ?? '';
-const isNeonOrRailway = /(neon\.tech|railway|rlwy\.net)/i.test(url);
+const forcePg = process.env.FORCE_PG === "1" || process.env.FORCE_PG === "true";
 
-// 👉 Par défaut on privilégie pg (local/Docker). Neon seulement si URL cloud.
-const usePg = !!url && !isNeonOrRailway;
+// Détection simple
+const isLocal = url.includes("localhost") || url.includes("127.0.0.1");
+const isRailwayPublic = url.includes("rlwy.net") || url.includes("proxy.rlwy.net");
+const isRailwayInternal = url.includes("railway.internal");
 
-console.log('🔍 Configuration base de données:');
-console.log('  DATABASE_URL:', url ? url.substring(0, 40) + '...' : 'undefined');
-console.log('  usePg:', usePg);
-console.log('  Neon/Railway:', isNeonOrRailway);
+// Avec Railway on utilise TOUJOURS pg. (forcePg permet de forcer si besoin)
+const mustUsePg = forcePg || isLocal || isRailwayPublic || isRailwayInternal;
 
-if (!url) {
-  throw new Error('DATABASE_URL is not set');
-}
+// SSL: public proxy = true (mais sans vérif de cert), interne = false, local = false
+const ssl =
+  isRailwayPublic ? { rejectUnauthorized: false } :
+  isRailwayInternal ? false :
+  false;
 
-let pool: any;
-let db: any;
+// Log safe (masque le mot de passe)
+const safeUrl = url.replace(/(postgres(?:ql)?:\/\/[^:]+:)[^@]+@/, "$1***@");
+console.log("🔌 DB target:", safeUrl);
+console.log("   Driver: pg");
+console.log("   SSL:", !!ssl);
 
-if (usePg) {
-  console.log('🐳 PostgreSQL local/Docker (driver pg)');
-  pool = new PgPool({
-    connectionString: url,
-    ssl: false, // local
-    max: 5,
-    connectionTimeoutMillis: 15000,
-  });
-  db = drizzlePg(pool, { schema });
+// --- Pool + Drizzle ---
+export const pool = new Pool({
+  connectionString: url,
+  ssl: ssl as any,
+  max: 5,
+  idleTimeoutMillis: 30_000,
+  connectionTimeoutMillis: 15_000,
+});
+export const db = drizzle(pool, { schema });
 
-  // Ping de santé
-  setTimeout(async () => {
-    try {
-      await pool.query('SELECT 1');
-      console.log('🎯 Test connexion PostgreSQL (pg) OK');
-    } catch (e: any) {
-      console.log('⚠️ Test connexion PostgreSQL (pg) KO:', e?.message ?? e);
-    }
-  }, 400);
-} else {
-  console.log('☁️ PostgreSQL Railway/Neon (driver Neon)');
-  neonConfig.webSocketConstructor = ws;
-  neonConfig.useSecureWebSocket = true;
-  neonConfig.pipelineConnect = false;
-  neonConfig.poolQueryViaFetch = true;
-
-  pool = new NeonPool({ connectionString: url });
-  db = drizzleNeon(pool, { schema });
-  console.log('✅ PostgreSQL Railway/Neon configuré (Neon)');
-}
-
-export { pool, db };
+// Petit ping
+(async () => {
+  try {
+    const r = await pool.query("select current_user, now() as ts");
+    console.log("🎯 DB OK:", r.rows[0]);
+  } catch (e: any) {
+    console.error("❌ DB KO:", e?.message ?? e);
+  }
+})();
