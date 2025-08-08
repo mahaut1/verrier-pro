@@ -1,50 +1,62 @@
-// server/db.ts — 100% pg (node-postgres), compatible local + Railway
+// server/db.ts (sécurisé)
 import { Pool } from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
 import * as schema from "@shared/schema";
 
-// --- ENV ---
 const url = process.env.DATABASE_URL;
 if (!url) throw new Error("DATABASE_URL manquante");
 
-const forcePg = process.env.FORCE_PG === "1" || process.env.FORCE_PG === "true";
+const NODE_ENV = process.env.NODE_ENV ?? "development";
+const isProd = NODE_ENV === "production";
 
-// Détection simple
-const isLocal = url.includes("localhost") || url.includes("127.0.0.1");
-const isRailwayPublic = url.includes("rlwy.net") || url.includes("proxy.rlwy.net");
-const isRailwayInternal = url.includes("railway.internal");
+const isLocal = /localhost|127\.0\.0\.1/.test(url);
+const isRailwayPublic = /rlwy\.net|proxy\.rlwy\.net/i.test(url);
+const isRailwayInternal = /railway\.internal/i.test(url);
 
-// Avec Railway on utilise TOUJOURS pg. (forcePg permet de forcer si besoin)
-const mustUsePg = forcePg || isLocal || isRailwayPublic || isRailwayInternal;
 
-// SSL: public proxy = true (mais sans vérif de cert), interne = false, local = false
+const allowInsecureDev = process.env.ALLOW_INSECURE_SSL === "1";
 const ssl =
-  isRailwayPublic ? { rejectUnauthorized: false } :
   isRailwayInternal ? false :
+  isRailwayPublic ? (isProd ? { rejectUnauthorized: true } : (allowInsecureDev ? { rejectUnauthorized: false } : { rejectUnauthorized: true })) :
   false;
 
-// Log safe (masque le mot de passe)
+// Masque le mot de passe
 const safeUrl = url.replace(/(postgres(?:ql)?:\/\/[^:]+:)[^@]+@/, "$1***@");
 console.log("🔌 DB target:", safeUrl);
-console.log("   Driver: pg");
-console.log("   SSL:", !!ssl);
+console.log("   Env:", NODE_ENV, "| SSL:", JSON.stringify(ssl) || false);
 
-// --- Pool + Drizzle ---
 export const pool = new Pool({
   connectionString: url,
   ssl: ssl as any,
-  max: 5,
+  max: 10,
   idleTimeoutMillis: 30_000,
   connectionTimeoutMillis: 15_000,
+  application_name: "verrier-pro",
 });
+
 export const db = drizzle(pool, { schema });
 
-// Petit ping
+// Sécurité PG au niveau session (timeouts)
 (async () => {
   try {
-    const r = await pool.query("select current_user, now() as ts");
-    console.log("🎯 DB OK:", r.rows[0]);
+    const client = await pool.connect();
+    try {
+      await client.query(`SET statement_timeout = '10s'`);
+      await client.query(`SET idle_in_transaction_session_timeout = '10s'`);
+      await client.query(`SET lock_timeout = '5s'`);
+      const r = await client.query("select current_user, now() as ts");
+      console.log("🎯 DB OK:", r.rows[0]);
+    } finally {
+      client.release();
+    }
   } catch (e: any) {
     console.error("❌ DB KO:", e?.message ?? e);
   }
 })();
+
+process.on("SIGTERM", async () => {
+  try { await pool.end(); } finally { process.exit(0); }
+});
+process.on("SIGINT", async () => {
+  try { await pool.end(); } finally { process.exit(0); }
+});
