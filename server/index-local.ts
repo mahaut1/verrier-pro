@@ -1,77 +1,71 @@
-import express from "express";
-import { registerRoutes } from "./routes";
 import dotenv from "dotenv";
-import { createServer as createViteServer } from 'vite';
-import viteConfig from '../vite.config.js';
 
 // Charger les variables d'environnement depuis .env
 dotenv.config();
 
-console.log("🚀 VerrierPro - Mode Local (Stockage Mémoire)");
-console.log("SESSION_SECRET:", process.env.SESSION_SECRET ? "CHARGÉE" : "UTILISE SECRET PAR DÉFAUT");
-console.log("NODE_ENV:", process.env.NODE_ENV || "development");
+console.log("✅ Variables d'environnement chargées:");
+console.log("DATABASE_URL:", process.env.DATABASE_URL ? "CHARGÉE" : "MANQUANTE");
+console.log("SESSION_SECRET:", process.env.SESSION_SECRET ? "CHARGÉE" : "MANQUANTE");
+console.log("NODE_ENV:", process.env.NODE_ENV);
 
-const app = express();
-const PORT = parseInt(process.env.PORT || '5000', 10);
+// Importer le reste du serveur depuis index.ts
+import express, { type Request, Response, NextFunction } from "express";
+import { setupVite, serveStatic, log } from "./vite-windows";
 
-// Configuration CORS et parsing
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-// Démarrer le serveur avec Vite
+// Import dynamique des routes pour éviter le problème de hoisting
 async function startServer() {
-  try {
-    // Enregistrer les routes backend
-    const server = await registerRoutes(app);
+  console.log("🔍 *** IMPORT STORAGE AVANT ROUTES ***");
+  const { storage } = await import("./storage");
+  console.log("🔍 *** STORAGE IMPORTÉ ET INSTANCIÉ ***");
+  
+  const { registerRoutes } = await import("./routes");
+  
+  const app = express();
 
-    // Configuration Vite pour le frontend
-    const vite = await createViteServer({
-      ...viteConfig,
-      configFile: false,
-      server: { middlewareMode: true }
-    });
+  // Configuration trust proxy pour rate limiting et sécurité
+  app.set('trust proxy', 1);
 
-    // Utiliser les middlewares Vite
-    app.use(vite.middlewares);
+  app.use(express.json());
+  app.use(express.urlencoded({ extended: false }));
 
-    // Route catch-all pour servir le frontend
-    app.use('*', async (req, res, next) => {
-      const url = req.originalUrl;
-      
-      try {
-        // Lire le template HTML
-        let template = `<!DOCTYPE html>
-<html lang="fr">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>VerrierPro - Gestion d'Artisan Verrier</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
-</html>`;
+  app.use((req, res, next) => {
+    const start = Date.now();
+    const path = req.path;
+    let capturedJsonResponse: Record<string, any> | undefined = undefined;
 
-        // Transformer avec Vite
-        const html = await vite.transformIndexHtml(url, template);
-        res.status(200).set({ 'Content-Type': 'text/html' }).end(html);
-      } catch (e) {
-        next(e);
+    const originalResJson = res.json;
+    res.json = function (bodyJson, ...args) {
+      capturedJsonResponse = bodyJson;
+      return originalResJson.apply(res, [bodyJson, ...args]);
+    };
+
+    res.on("finish", () => {
+      const duration = Date.now() - start;
+      if (path.startsWith("/api")) {
+        let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
+        if (capturedJsonResponse) {
+          logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
+        }
+        log(logLine);
       }
     });
 
-    server.listen(PORT, "0.0.0.0", () => {
-      const timestamp = new Date().toLocaleTimeString();
-      console.log(`${timestamp} [express] serving on http://localhost:${PORT}`);
-      console.log("🔐 Utilisateur test: cesium / admin123");
-      console.log("🌐 Frontend et Backend intégrés");
-    });
+    next();
+  });
 
-  } catch (error) {
-    console.error("Erreur lors du démarrage du serveur:", error);
-    process.exit(1);
+  const server = await registerRoutes(app);
+
+  // Configuration Vite pour développement
+  const { PORT = 5000 } = process.env;
+  if (process.env.NODE_ENV === "development") {
+    await setupVite(app, server);
+  } else {
+    serveStatic(app);
   }
+
+  server.listen(Number(PORT), "0.0.0.0", () => {
+    log(`serving on http://localhost:${PORT}`);
+  });
 }
 
-startServer();
+startServer().catch(console.error);

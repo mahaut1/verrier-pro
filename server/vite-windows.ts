@@ -3,12 +3,13 @@ import fs from "fs";
 import path from "path";
 import { createServer as createViteServer, createLogger } from "vite";
 import { type Server } from "http";
-import viteConfig from "../vite.config"; // Assurez-vous que le chemin est correct
+import viteConfig from "../vite.config";
 import { nanoid } from "nanoid";
 import { fileURLToPath } from "url";
 
-// Correction pour ES modules - même logique que vite.config.ts
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// Configuration Windows compatible
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const viteLogger = createLogger();
 
@@ -45,12 +46,17 @@ export async function setupVite(app: Express, server: Server) {
   });
 
   app.use(vite.middlewares);
-  app.use("*", async (req, res, next) => {
+  app.get('*', async (req, res, next) => {
     const url = req.originalUrl;
 
     try {
-      // Fix pour Windows - utilisation de __dirname comme dans vite.config.ts
-      const clientTemplate = path.resolve(__dirname, "..", "client", "index.html");
+      // WINDOWS FIX: Utilise __dirname au lieu de import.meta.dirname
+      const clientTemplate = path.resolve(
+        __dirname,
+        "..",
+        "client",
+        "index.html",
+      );
 
       // always reload the index.html file from disk incase it changes
       let template = await fs.promises.readFile(clientTemplate, "utf-8");
@@ -68,7 +74,8 @@ export async function setupVite(app: Express, server: Server) {
 }
 
 export function serveStatic(app: Express) {
-  const distPath = path.resolve(__dirname, "..", "dist", "public");
+  // WINDOWS FIX: Utilise __dirname au lieu de import.meta.dirname
+  const distPath = path.resolve(__dirname, "public");
 
   if (!fs.existsSync(distPath)) {
     throw new Error(
@@ -79,7 +86,7 @@ export function serveStatic(app: Express) {
   app.use(express.static(distPath));
 
   // fall through to index.html if the file doesn't exist
-  app.use("*", (_req, res) => {
+  app.get('*', (_req, res) => {
     res.sendFile(path.resolve(distPath, "index.html"));
   });
 }

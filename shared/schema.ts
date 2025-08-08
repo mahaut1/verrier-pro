@@ -1,7 +1,7 @@
+
 import { pgTable, text, serial, timestamp, jsonb, varchar, index } from "drizzle-orm/pg-core";
 import { z } from "zod";
 
-// Table sessions pour l'authentification (obligatoire)
 export const sessions = pgTable(
   "sessions",
   {
@@ -12,7 +12,6 @@ export const sessions = pgTable(
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
-// Table users pour l'authentification
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
@@ -24,14 +23,17 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Schema de validation manuel (compatible Zod v3/v4)
+// 🔹 On définit ici les rôles possibles
+export const roleEnum = z.enum(["admin", "artisan", "client"]);
+export type Role = z.infer<typeof roleEnum>;
+
 export const insertUserSchema = z.object({
   username: z.string().min(3, "Nom d'utilisateur minimum 3 caractères"),
   password: z.string().min(6, "Mot de passe minimum 6 caractères"),
   email: z.string().email("Email invalide"),
   firstName: z.string().min(1, "Prénom requis"),
   lastName: z.string().min(1, "Nom requis"),
-  role: z.string().default("artisan"),
+  role: roleEnum.default("artisan"), // ✅ ici on utilise roleEnum
 });
 
 export type User = typeof users.$inferSelect;

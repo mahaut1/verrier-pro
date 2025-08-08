@@ -3,7 +3,6 @@ import react from "@vitejs/plugin-react";
 import * as path from "path";
 import { fileURLToPath } from "url";
 
-// Correction pour ES modules
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
@@ -21,11 +20,13 @@ export default defineConfig({
     emptyOutDir: true,
   },
   server: {
-    port: 5173,
-    host: "0.0.0.0",
-    fs: {
-      strict: true,
-      deny: ["**/.*"],
+        port: 5173, 
+    proxy: {
+      "/api": {
+        target: "http://localhost:5000", // backend Express
+        changeOrigin: true,
+       
+      },
     },
   },
 });

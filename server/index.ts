@@ -13,6 +13,9 @@ import express, { type Request, Response, NextFunction } from "express";
 import { setupVite, serveStatic, log } from "./vite-windows";
 // Import dynamique des routes pour éviter le problème de hoisting
 async function startServer() {
+    console.log("🔍 *** IMPORT STORAGE AVANT ROUTES ***");
+  const { storage } = await import("./storage");
+  console.log("🔍 *** STORAGE IMPORTÉ ET INSTANCIÉ ***");
   const { registerRoutes } = await import("./routes");
   
   const app = express();

@@ -28,7 +28,7 @@
     "server",
     "vite.config.ts",
     "tailwind.config.ts"
-  ],
+, "test-db copy.ts"  ],
   "exclude": [
     "node_modules", 
     "dist", 
