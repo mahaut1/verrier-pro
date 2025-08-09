@@ -1,8 +1,11 @@
 import type { Express, Request, Response } from 'express';
 import bcrypt from 'bcrypt';
-import { storage } from './storage';
 import { insertUserSchema } from '@shared/schema';
+import { UsersStorage } from './storage/users.storage';
 
+export const storages = {
+  users: new UsersStorage(),
+};
 function handleAsync(fn: (req: Request, res: Response, next?: any) => Promise<any>) {
   return (req: Request, res: Response, next: any) => {
     Promise.resolve(fn(req, res, next)).catch(next);
@@ -18,13 +21,13 @@ export function registerAuthRoutes(app: Express, requireAuth: any) {
 
     const userData = validation.data;
 
-    const existingUser = await storage.getUserByUsername(userData.username);
+    const existingUser = await storages.users.getUserByUsername(userData.username);
     if (existingUser) {
       return res.status(400).json({ message: "Nom d'utilisateur déjà pris" });
     }
 
     const hashedPassword = await bcrypt.hash(userData.password, 10);
-    const user = await storage.createUser({ ...userData, password: hashedPassword });
+    const user = await storages.users.createUser({ ...userData, password: hashedPassword });
 
     req.session.userId = user.id;
 
@@ -38,7 +41,7 @@ export function registerAuthRoutes(app: Express, requireAuth: any) {
       return res.status(400).json({ message: "Nom d'utilisateur et mot de passe requis" });
     }
 
-    const user = await storage.getUserByUsername(username);
+    const user = await storages.users.getUserByUsername(username);
     if (!user) return res.status(401).json({ message: 'Identifiants invalides' });
 
     const ok = await bcrypt.compare(password, user.password);
@@ -51,7 +54,7 @@ export function registerAuthRoutes(app: Express, requireAuth: any) {
   }));
 
   app.get('/api/auth/user', requireAuth, handleAsync(async (req, res) => {
-    const user = await storage.getUserById(req.session.userId!);
+    const user = await storages.users.getUserById(req.session.userId!);
     if (!user) return res.status(404).json({ message: 'Utilisateur non trouvé' });
     const { password, ...safe } = user;
     res.json(safe);

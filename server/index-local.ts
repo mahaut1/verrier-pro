@@ -1,8 +1,8 @@
-// server/index-local.ts
 import 'dotenv/config';
 import express from 'express';
 import { registerRoutes } from './routes';
 import { setupVite, serveStatic, log } from './vite-windows';
+
 
 (async () => {
   const app = express();

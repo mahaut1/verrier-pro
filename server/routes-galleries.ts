@@ -1,8 +1,11 @@
 import type { Express, Request, Response } from 'express';
 import { z } from 'zod';
-import { storage } from './storage';
 import { insertGallerySchema } from '@shared/schema';
+import { GalleriesStorage } from './storage/galleries.storage';
 
+export const storages = {
+  galleries: new GalleriesStorage(),
+};
 // Helpers
 const paramsIdSchema = z.object({ id: z.coerce.number().int().positive() });
 
@@ -26,7 +29,7 @@ export function registerGalleryRoutes(app: Express, requireAuth: any) {
     if (!body.success) {
       return res.status(400).json({ message: 'Données invalides', errors: body.error.issues });
     }
-    const row = await storage.createGallery(req.session.userId!, body.data as any);
+    const row = await storages.galleries.createGallery(req.session.userId!, body.data as any);
     return res.status(201).json(row);
   });
 
@@ -36,7 +39,7 @@ export function registerGalleryRoutes(app: Express, requireAuth: any) {
     if (!q.success) {
       return res.status(400).json({ message: 'Paramètres invalides', errors: q.error.issues });
     }
-    const rows = await storage.listGalleries(req.session.userId!, q.data);
+    const rows = await storages.galleries.listGalleries(req.session.userId!, q.data);
     return res.json(rows);
   });
 
@@ -46,7 +49,7 @@ export function registerGalleryRoutes(app: Express, requireAuth: any) {
     if (!p.success) {
       return res.status(400).json({ message: 'Paramètres invalides', errors: p.error.issues });
     }
-    const row = await storage.getGalleryById(req.session.userId!, p.data.id);
+    const row = await storages.galleries.getGalleryById(req.session.userId!, p.data.id);
     if (!row) return res.status(404).json({ message: 'Galerie introuvable' });
     return res.json(row);
   });
@@ -61,7 +64,7 @@ export function registerGalleryRoutes(app: Express, requireAuth: any) {
     if (!body.success) {
       return res.status(400).json({ message: 'Données invalides', errors: body.error.issues });
     }
-    const row = await storage.updateGallery(req.session.userId!, p.data.id, body.data as any);
+    const row = await storages.galleries.updateGallery(req.session.userId!, p.data.id, body.data as any);
     if (!row) return res.status(404).json({ message: 'Galerie introuvable' });
     return res.json(row);
   });
@@ -72,7 +75,7 @@ export function registerGalleryRoutes(app: Express, requireAuth: any) {
     if (!p.success) {
       return res.status(400).json({ message: 'Paramètres invalides', errors: p.error.issues });
     }
-    const ok = await storage.deleteGallery(req.session.userId!, p.data.id);
+    const ok = await storages.galleries.deleteGallery(req.session.userId!, p.data.id);
     if (!ok) return res.status(404).json({ message: 'Galerie introuvable' });
     return res.status(204).send();
   });

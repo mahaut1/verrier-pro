@@ -57,7 +57,7 @@ export default function PieceEditForm({ piece, onSuccess }: PieceEditFormProps) 
         price: data.price ? data.price : null,
         galleryId: data.galleryId || null,
       };
-      return apiRequest("PUT", `/api/pieces/${piece.id}`, submitData);
+      return apiRequest("PATCH", `/api/pieces/${piece.id}`, submitData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/pieces"] });

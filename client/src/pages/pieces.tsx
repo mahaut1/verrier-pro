@@ -13,6 +13,7 @@ import { apiRequest } from "../lib/queryClient";
 import type { Piece, Gallery } from "@shared/schema";
 import PieceForm from "../components/forms/piece-form";
 import PieceEditForm from "../components/forms/piece-edit-form";
+import Header from "../components/layout/Header";
 
 function getStatusColor(status: string) {
   switch (status) {
@@ -108,6 +109,7 @@ const { data: galleries = [] } = useQuery({
   if (isLoading) {
     return (
       <div className="py-6">
+        <Header />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="space-y-6">
             <Skeleton className="h-8 w-64" />

@@ -107,6 +107,7 @@ export function registerPieceRoutes(app: ExpressApp, requireAuth: any) {
       if (!row) return res.status(404).json({ message: 'Pièce introuvable' });
       return res.json(row);
     })
+    
   );
 
   // DELETE
@@ -135,9 +136,8 @@ export function registerPieceRoutes(app: ExpressApp, requireAuth: any) {
         return res.status(400).json({ message: 'Aucun fichier envoyé' });
       }
 
-      // URL publique à renvoyer. Si tu exposes /uploads statique :
-      // imageUrl = `/uploads/pieces/${req.file.filename}`
-      const imageUrl = `/uploads/pieces/${req.file.filename}`;
+ const baseUrl = process.env.BACKEND_BASE_URL || `${req.protocol}://${req.get("host")}`;
+  const imageUrl = `${baseUrl}/uploads/pieces/${req.file.filename}`;
 
       const row = await storage.setPieceImage(
         req.session.userId!,
