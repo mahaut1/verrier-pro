@@ -8,6 +8,27 @@
       "when": 1754599793637,
       "tag": "0000_workable_fantastic_four",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1754664712726,
+      "tag": "0001_giant_klaw",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1754718153366,
+      "tag": "0002_thick_trauma",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1754723576427,
+      "tag": "0003_useful_polaris",
+      "breakpoints": true
     }
   ]
 }

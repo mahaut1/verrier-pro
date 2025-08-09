@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "ux_pieces_user_uniqueid" ON "pieces" USING btree ("user_id","unique_id");

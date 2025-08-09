@@ -1,35 +1,30 @@
+import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "../lib/queryClient";
 import { useAuth } from "../hooks/useAuth";
 import { Button } from "../components/ui/button";
-import { Card, CardContent,  CardHeader, CardTitle } from "../components/ui/card";
-import { 
-  Home as HomeIcon, 
-  Package, 
-  Palette, 
-  Building, 
-  ShoppingCart, 
-  Calendar, 
-  
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import {
+  Home as HomeIcon,
+  Package,
+  Palette,
+  Building,
+  ShoppingCart,
+  Calendar,
   Plus,
- 
   AlertTriangle,
- 
 } from "lucide-react";
 
-interface HomeProps {
-  onNavigate?: (page: string) => void;
-}
+function MainNavigation({ currentPage, onLogout }: { currentPage: string; onLogout: () => void }) {
+  const navigate = useNavigate();
 
-// Navigation principale selon les maquettes
-function MainNavigation({  onNavigate, onLogout, currentPage }: any) {
   const navItems = [
-    { id: 'home', label: 'Tableau de bord', icon: HomeIcon },
-    { id: 'stock', label: 'Stock', icon: Package },
-    { id: 'pieces', label: 'Pièces', icon: Palette },
-    { id: 'galleries', label: 'Galeries', icon: Building },
-    { id: 'commands', label: 'Commandes', icon: ShoppingCart },
-    { id: 'events', label: 'Événements', icon: Calendar },
+    { id: "/", label: "Tableau de bord", icon: HomeIcon },
+    { id: "/stock", label: "Stock", icon: Package },
+    { id: "/pieces", label: "Pièces", icon: Palette },
+    { id: "/galleries", label: "Galeries", icon: Building },
+    { id: "/commands", label: "Commandes", icon: ShoppingCart },
+    { id: "/events", label: "Événements", icon: Calendar },
   ];
 
   return (
@@ -44,11 +39,11 @@ function MainNavigation({  onNavigate, onLogout, currentPage }: any) {
               {navItems.map((item) => (
                 <button
                   key={item.id}
-                  onClick={() => onNavigate?.(item.id)}
+                  onClick={() => navigate(item.id)}
                   className={`flex items-center px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap ${
-                    currentPage === item.id || (currentPage === 'home' && item.id === 'home')
-                      ? 'bg-blue-600 text-white'
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                    currentPage === item.id
+                      ? "bg-blue-600 text-white"
+                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
                   }`}
                 >
                   <item.icon className="h-4 w-4 mr-2" />
@@ -58,7 +53,7 @@ function MainNavigation({  onNavigate, onLogout, currentPage }: any) {
             </nav>
           </div>
           <div className="flex items-center space-x-4">
-            <Button onClick={() => onNavigate?.('pieces')} className="bg-blue-600 hover:bg-blue-700">
+            <Button onClick={() => navigate("/pieces")} className="bg-blue-600 hover:bg-blue-700">
               <Plus className="h-4 w-4 mr-2" />
               Nouvelle pièce
             </Button>
@@ -75,38 +70,12 @@ function MainNavigation({  onNavigate, onLogout, currentPage }: any) {
   );
 }
 
-// Statistiques principales
 function StatsOverview() {
-  // Mock data - remplacez par de vraies données plus tard
   const stats = [
-    {
-      label: 'Pièces totales',
-      value: '0',
-      change: '+12% ce mois',
-      icon: Palette,
-      color: 'text-blue-600 bg-blue-100'
-    },
-    {
-      label: 'Stock critique',
-      value: '0',
-      change: 'Attention requise',
-      icon: AlertTriangle,
-      color: 'text-orange-600 bg-orange-100'
-    },
-    {
-      label: 'Commandes actives',
-      value: '0',
-      change: '8 en transit',
-      icon: ShoppingCart,
-      color: 'text-green-600 bg-green-100'
-    },
-    {
-      label: 'Galeries partenaires',
-      value: '0',
-      change: '89% actives',
-      icon: Building,
-      color: 'text-purple-600 bg-purple-100'
-    }
+    { label: "Pièces totales", value: "0", change: "+12% ce mois", icon: Palette, color: "text-blue-600 bg-blue-100" },
+    { label: "Stock critique", value: "0", change: "Attention requise", icon: AlertTriangle, color: "text-orange-600 bg-orange-100" },
+    { label: "Commandes actives", value: "0", change: "8 en transit", icon: ShoppingCart, color: "text-green-600 bg-green-100" },
+    { label: "Galeries partenaires", value: "0", change: "89% actives", icon: Building, color: "text-purple-600 bg-purple-100" },
   ];
 
   return (
@@ -131,11 +100,11 @@ function StatsOverview() {
   );
 }
 
-// Sections principales
-function MainSections({ onNavigate }: { onNavigate: any }) {
+function MainSections() {
+  const navigate = useNavigate();
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-      {/* Pièces récentes */}
       <Card>
         <CardHeader>
           <CardTitle>Pièces récentes</CardTitle>
@@ -144,19 +113,13 @@ function MainSections({ onNavigate }: { onNavigate: any }) {
           <div className="text-center py-8">
             <Palette className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <p className="text-gray-500 mb-4">Aucune pièce trouvée</p>
-            <Button onClick={() => onNavigate?.('pieces')} variant="outline">
+            <Button onClick={() => navigate("/pieces")} variant="outline">
               Créer votre première pièce
-            </Button>
-          </div>
-          <div className="mt-6">
-            <Button onClick={() => onNavigate?.('pieces')} variant="ghost" className="w-full">
-              Voir toutes les pièces
             </Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* Alertes stock */}
       <Card>
         <CardHeader>
           <CardTitle>Alertes stock</CardTitle>
@@ -167,40 +130,20 @@ function MainSections({ onNavigate }: { onNavigate: any }) {
             <p className="text-gray-500 mb-2">Aucune alerte de stock</p>
             <p className="text-sm text-gray-400">Tous vos stocks sont au niveau optimal</p>
           </div>
-          <div className="mt-6">
-            <Button onClick={() => onNavigate?.('stock')} variant="ghost" className="w-full">
-              Gérer les stocks
-            </Button>
-          </div>
         </CardContent>
       </Card>
     </div>
   );
 }
 
-// Actions rapides
-function QuickActions({ onNavigate }: { onNavigate: any }) {
+function QuickActions() {
+  const navigate = useNavigate();
+
   const actions = [
-    {
-      title: 'Créer une pièce',
-      icon: Palette,
-      action: () => onNavigate?.('pieces')
-    },
-    {
-      title: 'Nouvelle commande',
-      icon: ShoppingCart,
-      action: () => onNavigate?.('commands')
-    },
-    {
-      title: 'Entrée de stock',
-      icon: Package,
-      action: () => onNavigate?.('stock')
-    },
-    {
-      title: 'Ajouter galerie',
-      icon: Building,
-      action: () => onNavigate?.('galleries')
-    }
+    { title: "Créer une pièce", icon: Palette, path: "/pieces" },
+    { title: "Nouvelle commande", icon: ShoppingCart, path: "/commands" },
+    { title: "Entrée de stock", icon: Package, path: "/stock" },
+    { title: "Ajouter galerie", icon: Building, path: "/galleries" },
   ];
 
   return (
@@ -208,7 +151,11 @@ function QuickActions({ onNavigate }: { onNavigate: any }) {
       <h3 className="text-lg font-medium text-gray-900 mb-4">Actions rapides</h3>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {actions.map((action, index) => (
-          <Card key={index} className="cursor-pointer hover:shadow-md transition-shadow" onClick={action.action}>
+          <Card
+            key={index}
+            className="cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => navigate(action.path)}
+          >
             <CardContent className="p-6 text-center">
               <action.icon className="h-8 w-8 text-gray-400 mx-auto mb-3" />
               <p className="text-sm font-medium text-gray-700">{action.title}</p>
@@ -220,48 +167,32 @@ function QuickActions({ onNavigate }: { onNavigate: any }) {
   );
 }
 
-export default function Home({ onNavigate }: HomeProps) {
+export default function Home() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const logoutMutation = useMutation({
-    mutationFn: async () => {
-      return await apiRequest("POST", "/api/logout", {});
-    },
+    mutationFn: async () => apiRequest("POST", "/api/logout", {}),
     onSuccess: () => {
       queryClient.clear();
-      window.location.reload();
+      navigate("/login", { replace: true });
     },
   });
 
-  const handleLogout = () => {
-    logoutMutation.mutate();
-  };
-
   return (
     <div className="min-h-screen bg-gray-50">
-      <MainNavigation 
-        currentUser={user} 
-        onNavigate={onNavigate} 
-        onLogout={handleLogout}
-        currentPage="home"
-      />
-      
+      <MainNavigation currentPage="/" onLogout={() => logoutMutation.mutate()} />
+
       <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-        {/* En-tête */}
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-gray-900">Tableau de bord</h1>
           <p className="text-gray-600">Aperçu de votre activité d'atelier</p>
         </div>
 
-        {/* Statistiques */}
         <StatsOverview />
-
-        {/* Sections principales */}
-        <MainSections onNavigate={onNavigate} />
-
-        {/* Actions rapides */}
-        <QuickActions onNavigate={onNavigate} />
+        <MainSections />
+        <QuickActions />
       </main>
     </div>
   );

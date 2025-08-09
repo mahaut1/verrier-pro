@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
@@ -6,12 +7,9 @@ import { Label } from "../components/ui/label";
 import { useToast } from "../hooks/useToast";
 import { apiRequest } from "../lib/queryClient";
 
-interface RegisterProps {
-  onSwitchToLogin: () => void;
-}
-
-export default function Register({ onSwitchToLogin }: RegisterProps) {
+export default function Register() {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     username: "",
@@ -24,7 +22,7 @@ export default function Register({ onSwitchToLogin }: RegisterProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (formData.password !== formData.confirmPassword) {
       toast({
         title: "Erreur",
@@ -36,24 +34,21 @@ export default function Register({ onSwitchToLogin }: RegisterProps) {
 
     setIsLoading(true);
     try {
-      await apiRequest(
-        "POST",
-        "/api/register",
-        {
-          username: formData.username,
-          password: formData.password,
-          email: formData.email,
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-        }
-      );
+      await apiRequest("POST", "/api/register", {
+        username: formData.username,
+        password: formData.password,
+        email: formData.email,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+      });
 
       toast({
         title: "Inscription réussie",
         description: "Votre compte a été créé avec succès",
       });
 
-      window.location.reload();
+      // Après inscription, redirige vers la connexion
+      navigate("/login", { replace: true });
     } catch (error: any) {
       toast({
         title: "Erreur d'inscription",
@@ -69,12 +64,8 @@ export default function Register({ onSwitchToLogin }: RegisterProps) {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle className="text-center text-3xl font-bold text-gray-900">
-            VerrierPro
-          </CardTitle>
-          <p className="text-center text-gray-600">
-            Créez votre compte artisan verrier
-          </p>
+          <CardTitle className="text-center text-3xl font-bold text-gray-900">VerrierPro</CardTitle>
+          <p className="text-center text-gray-600">Créez votre compte artisan verrier</p>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -85,7 +76,7 @@ export default function Register({ onSwitchToLogin }: RegisterProps) {
                   id="firstName"
                   type="text"
                   value={formData.firstName}
-                  onChange={(e) => setFormData({...formData, firstName: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
                   required
                 />
               </div>
@@ -95,7 +86,7 @@ export default function Register({ onSwitchToLogin }: RegisterProps) {
                   id="lastName"
                   type="text"
                   value={formData.lastName}
-                  onChange={(e) => setFormData({...formData, lastName: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
                   required
                 />
               </div>
@@ -107,7 +98,7 @@ export default function Register({ onSwitchToLogin }: RegisterProps) {
                 id="username"
                 type="text"
                 value={formData.username}
-                onChange={(e) => setFormData({...formData, username: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                 required
               />
             </div>
@@ -118,7 +109,7 @@ export default function Register({ onSwitchToLogin }: RegisterProps) {
                 id="email"
                 type="email"
                 value={formData.email}
-                onChange={(e) => setFormData({...formData, email: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 required
               />
             </div>
@@ -129,7 +120,7 @@ export default function Register({ onSwitchToLogin }: RegisterProps) {
                 id="password"
                 type="password"
                 value={formData.password}
-                onChange={(e) => setFormData({...formData, password: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 required
               />
             </div>
@@ -140,7 +131,7 @@ export default function Register({ onSwitchToLogin }: RegisterProps) {
                 id="confirmPassword"
                 type="password"
                 value={formData.confirmPassword}
-                onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                 required
               />
             </div>
@@ -152,9 +143,9 @@ export default function Register({ onSwitchToLogin }: RegisterProps) {
 
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">
-              Déjà un compte ?{' '}
+              Déjà un compte ?{" "}
               <button
-                onClick={onSwitchToLogin}
+                onClick={() => navigate("/login")}
                 className="font-medium text-blue-600 hover:text-blue-500"
               >
                 Se connecter
