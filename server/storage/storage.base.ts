@@ -1,4 +1,3 @@
-// server/storage/storage.base.ts
 import { db } from "../db";
 import { Role } from "@shared/schema";
 

@@ -1,10 +1,10 @@
 import { db } from "../db";
 import * as schema from "@shared/schema";
 import { eq } from "drizzle-orm";
-import type { Role } from "@shared/schema"; // ✅ Ajout import du type Role
+import type { Role } from "@shared/schema"; 
 import { StorageBase, memory, User } from "./storage.base";
 
-// ✅ Redéfinition du type CreateUserInput ici
+
 export interface CreateUserInput {
   username: string;
   email: string;

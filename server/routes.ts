@@ -1,4 +1,3 @@
-// server/routes.ts
 import express, { type Express, type Request, type Response, type NextFunction } from 'express';
 import { createServer, type Server } from 'http';
 import session from 'express-session';

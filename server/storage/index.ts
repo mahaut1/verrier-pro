@@ -1,4 +1,3 @@
-// server/storage/index.ts
 import { UsersStorage } from "./users.storage";
 import { PiecesStorage } from "./pieces.storage";
 import { GalleriesStorage } from "./galleries.storage";

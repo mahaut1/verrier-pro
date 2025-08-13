@@ -1,4 +1,3 @@
-// client/src/lib/useAuth.ts
 import { useEffect, useState, useCallback } from 'react';
 
 type Role = 'admin' | 'artisan' | 'client';
