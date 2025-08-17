@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
@@ -14,15 +13,22 @@ import {Form,FormControl, FormField, FormItem, FormLabel, FormMessage,} from "@/
 import {DialogHeader,DialogTitle,} from "@/components/ui/dialog";
 import ImageUpload from "@/components/ui/image-upload";
 import type { Piece } from "@shared/schema";
+import NewPieceTypeForm from "./new_piece_type_form";
 
-const formSchema = insertPieceSchema.extend({
-  price: z.string().optional(),
-});
+
+type PieceWithType = Piece & { pieceType?: { id: number; name: string } | null };
+
+const formSchema = insertPieceSchema
+  .extend({ price: z.string().optional() })
+  .omit({ pieceTypeId: true }) 
+  .extend({
+    pieceTypeId: z.number().nullable().optional(),
+  });
 
 type FormData = z.infer<typeof formSchema>;
 
 interface PieceEditFormProps {
-  piece: Piece;
+  piece: PieceWithType;
   onSuccess?: () => void;
 }
 
@@ -32,15 +38,30 @@ export default function PieceEditForm({ piece, onSuccess }: PieceEditFormProps) 
 
   const { data: galleries } = useQuery({
     queryKey: ["/api/galleries"],
+     queryFn: async () => {
+      const res = await fetch("/api/galleries", { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
   });
+
+    const { data: pieceTypes = [] } = useQuery({
+    queryKey: ["/api/piece-types"],
+    queryFn: async () => {
+      const res = await fetch("/api/piece-types", { credentials: "include" });
+      if (!res.ok) throw new Error("Impossible de charger les types");
+      const data = await res.json();
+      return data as { id: number; name: string }[];
+    },
+  });
+
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: piece.name,
       uniqueId: piece.uniqueId,
-      type: piece.type,
-      dimensions: piece.dimensions || "",
+      pieceTypeId: piece.pieceType?.id ?? (piece as any).pieceTypeId ?? null,      dimensions: piece.dimensions || "",
       dominantColor: piece.dominantColor || "",
       description: piece.description || "",
       status: piece.status,
@@ -56,6 +77,7 @@ export default function PieceEditForm({ piece, onSuccess }: PieceEditFormProps) 
         ...data,
         price: data.price ? data.price : null,
         galleryId: data.galleryId || null,
+        pieceTypeId: data.pieceTypeId ?? null,
       };
       return apiRequest("PATCH", `/api/pieces/${piece.id}`, submitData);
     },
@@ -116,29 +138,29 @@ export default function PieceEditForm({ piece, onSuccess }: PieceEditFormProps) 
             )}
           />
 
-          <div className="grid grid-cols-2 gap-4">
+     <div className="grid grid-cols-2 gap-4">
             <FormField
               control={form.control}
-              name="type"
+              name="pieceTypeId"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Type</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select
+                    onValueChange={(val) => field.onChange(val === "none" ? null : Number(val))}
+                    defaultValue={field.value == null ? "none" : String(field.value)}
+                  >
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Sélectionner le type" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="poisson_mirroir">Poisson Mirroir</SelectItem>
-                      <SelectItem value="poisson_piques">Poisson Piques</SelectItem>
-                      <SelectItem value="poisson_candy">Poisson Candy</SelectItem>
-                      <SelectItem value="poisson_eden_roc">Poisson Eden Roc</SelectItem>
-                      <SelectItem value="tortues">Tortues</SelectItem>
-                      <SelectItem value="poulpes">Poulpes</SelectItem>
-                      <SelectItem value="meduse">Méduse</SelectItem>
-                      <SelectItem value="pez">Pez</SelectItem>
-                      <SelectItem value="other">Autre</SelectItem>
+                      <SelectItem value="none">Aucun type</SelectItem>
+                      {pieceTypes.map((t: any) => (
+                        <SelectItem key={t.id} value={String(t.id)}>
+                          {t.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <FormMessage />

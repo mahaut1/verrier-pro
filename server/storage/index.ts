@@ -1,34 +1,68 @@
 import { UsersStorage } from "./users.storage";
 import { PiecesStorage } from "./pieces.storage";
 import { GalleriesStorage } from "./galleries.storage";
+import { PieceTypesStorage } from "./piece-types.storage";
+export type { PieceListQuery } from "./storage.base";
+
 
 const users = new UsersStorage();
 const pieces = new PiecesStorage();
 const galleries = new GalleriesStorage();
+const pieceTypes = new PieceTypesStorage();
 
-// (facultatif) garder un objet "storage" rétro-compatible
 export const storage = {
   // USERS
-  getUserByUsername: (u: string) => users.getUserByUsername(u),
-  getUserById: (id: number) => users.getUserById(id),
-  createUser: (i: Parameters<UsersStorage["createUser"]>[0]) => users.createUser(i),
-  getUser: (u: string) => users.getUser(u),
+   getUserByUsername: (...a: Parameters<UsersStorage["getUserByUsername"]>) =>
+    users.getUserByUsername(...a),
+   getUserById: (...a: Parameters<UsersStorage["getUserById"]>) =>
+    users.getUserById(...a),
+   createUser: (...a: Parameters<UsersStorage["createUser"]>) =>
+    users.createUser(...a),
+   getUser: (...a: Parameters<UsersStorage["getUser"]>) =>
+    users.getUser(...a),
 
   // PIECES
-  createPiece: (userId: number, d: any) => pieces.createPiece(userId, d),
-  listPieces: (userId: number, q?: any) => pieces.listPieces(userId, q),
-  getPieceById: (userId: number, id: number) => pieces.getPieceById(userId, id),
-  updatePiece: (userId: number, id: number, patch: any) => pieces.updatePiece(userId, id, patch),
-  deletePiece: (userId: number, id: number) => pieces.deletePiece(userId, id),
-  setPieceImage: (userId: number, id: number, url: string) => pieces.setPieceImage(userId, id, url),
-  clearPieceImage: (userId: number, id: number) => pieces.clearPieceImage(userId, id),
+  createPiece: (...a: Parameters<PiecesStorage["createPiece"]>) =>
+    pieces.createPiece(...a),
+  listPieces: (...a: Parameters<PiecesStorage["listPieces"]>) =>
+    pieces.listPieces(...a),
+  getPieceById: (...a: Parameters<PiecesStorage["getPieceById"]>) =>
+    pieces.getPieceById(...a),
+  updatePiece: (...a: Parameters<PiecesStorage["updatePiece"]>) =>
+    pieces.updatePiece(...a),
+  deletePiece: (...a: Parameters<PiecesStorage["deletePiece"]>) =>
+    pieces.deletePiece(...a),
+  setPieceImage: (...a: Parameters<PiecesStorage["setPieceImage"]>) =>
+    pieces.setPieceImage(...a),
+  clearPieceImage: (...a: Parameters<PiecesStorage["clearPieceImage"]>) =>
+    pieces.clearPieceImage(...a),
 
   // GALLERIES
-  createGallery: (userId: number, d: any) => galleries.createGallery(userId, d),
-  listGalleries: (userId: number, q?: any) => galleries.listGalleries(userId, q),
-  updateGallery: (userId: number, id: number, patch: any) => galleries.updateGallery(userId, id, patch),
-  deleteGallery: (userId: number, id: number) => galleries.deleteGallery(userId, id),
-  getGalleryById: (userId: number, id: number) => galleries.getGalleryById(userId, id),
+   createGallery: (...a: Parameters<GalleriesStorage["createGallery"]>) =>
+    galleries.createGallery(...a),
+  listGalleries: (...a: Parameters<GalleriesStorage["listGalleries"]>) =>
+    galleries.listGalleries(...a),
+  updateGallery: (...a: Parameters<GalleriesStorage["updateGallery"]>) =>
+    galleries.updateGallery(...a),
+  deleteGallery: (...a: Parameters<GalleriesStorage["deleteGallery"]>) =>
+    galleries.deleteGallery(...a),
+  getGalleryById: (...a: Parameters<GalleriesStorage["getGalleryById"]>) =>
+    galleries.getGalleryById(...a),
+
+  
+  // PIECE TYPES 
+  createPieceType: (userId: number, d: Parameters<PieceTypesStorage["createPieceType"]>[1]) =>
+    pieceTypes.createPieceType(userId, d),
+  listPieceTypes: (userId: number, q?: Parameters<PieceTypesStorage["listPieceTypes"]>[1]) =>
+    pieceTypes.listPieceTypes(userId, q),
+  getPieceTypeById: (userId: number, id: number) =>
+    pieceTypes.getPieceTypeById(userId, id),
+  updatePieceType: (userId: number, id: number, patch: Parameters<PieceTypesStorage["updatePieceType"]>[2]) =>
+    pieceTypes.updatePieceType(userId, id, patch),
+  deletePieceType: (userId: number, id: number) =>
+    pieceTypes.deletePieceType(userId, id),
 };
 
-export { users, pieces, galleries }; // si tu veux aussi accès direct
+
+export { users, pieces, galleries, pieceTypes }; 
+export type AppStorage = typeof storage;

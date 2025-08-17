@@ -1,4 +1,3 @@
-// server/db.ts (sécurisé)
 import { Pool } from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
 import * as schema from "@shared/schema";

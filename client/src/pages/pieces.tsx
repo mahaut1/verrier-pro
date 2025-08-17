@@ -13,7 +13,10 @@ import { apiRequest } from "../lib/queryClient";
 import type { Piece, Gallery } from "@shared/schema";
 import PieceForm from "../components/forms/piece-form";
 import PieceEditForm from "../components/forms/piece-edit-form";
-import Header from "../components/layout/Header";
+import NewPieceTypeForm from "../components/forms/new_piece_type_form";
+
+
+type PieceWithType = Piece & { pieceType?: { id: number; name: string } | null };
 
 function getStatusColor(status: string) {
   switch (status) {
@@ -54,11 +57,11 @@ export default function Pieces() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [openDialog, setOpenDialog] = useState(false);
-  const [editPiece, setEditPiece] = useState<Piece | null>(null);
+  const [editPiece, setEditPiece] = useState<PieceWithType | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-const { data: pieces = [], isLoading } = useQuery({
+const { data: pieces = [], isLoading } = useQuery<PieceWithType[]>({
   queryKey: ["/api/pieces"],
   queryFn: async () => {
     const res = await fetch("/api/pieces", { credentials: "include" });
@@ -66,6 +69,15 @@ const { data: pieces = [], isLoading } = useQuery({
     return res.json(); // doit renvoyer un tableau
   },
 });
+
+  const { data: pieceTypes = [] } = useQuery({
+    queryKey: ["/api/piece-types"],
+    queryFn: async () => {
+      const res = await fetch("/api/piece-types", { credentials: "include" });
+      if (!res.ok) throw new Error("Impossible de charger les types");
+      return res.json() as Promise<{ id: number; name: string }[]>;
+    },
+  });
 
 const { data: galleries = [] } = useQuery({
   queryKey: ["/api/galleries"],
@@ -97,14 +109,24 @@ const { data: galleries = [] } = useQuery({
     },
   });
 
-  const filteredPieces = Array.isArray(pieces) ? pieces.filter((piece: Piece) => {
-    const matchesSearch = piece.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         piece.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         piece.description?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === "all" || piece.status === statusFilter;
-    const matchesType = typeFilter === "all" || piece.type === typeFilter;
-    return matchesSearch && matchesStatus && matchesType;
-  }) : [];
+
+  const filteredPieces = Array.isArray(pieces)
+    ? pieces.filter((piece) => {
+        const typeName = piece.pieceType?.name ?? "";
+        const matchesSearch =
+          piece.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          typeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          piece.description?.toLowerCase().includes(searchQuery.toLowerCase());
+
+        const matchesStatus = statusFilter === "all" || piece.status === statusFilter;
+
+        const matchesType =
+          typeFilter === "all" ||
+          String(piece.pieceType?.id ?? "") === typeFilter;
+
+        return matchesSearch && matchesStatus && matchesType;
+      })
+    : [];
 
   if (isLoading) {
     return (
@@ -128,14 +150,22 @@ const { data: galleries = [] } = useQuery({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="md:flex md:items-center md:justify-between">
           <div className="flex-1 min-w-0">
-            <h2 className="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl sm:truncate">
+            <h2 className="text-2xl font-bold leading-7 text-blue-600 sm:text-3xl sm:truncate">
               Gestion des pièces
             </h2>
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="text-sm text-blue-600 mt-1">
               Suivez et gérez toutes vos créations artistiques
             </p>
           </div>
           <div className="mt-4 flex md:mt-0 md:ml-4">
+             <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="outline">+ Nouveau type</Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-md">
+                <NewPieceTypeForm />
+              </DialogContent>
+            </Dialog> 
             <Dialog open={openDialog} onOpenChange={setOpenDialog}>
               <DialogTrigger asChild>
                 <Button>
@@ -177,21 +207,22 @@ const { data: galleries = [] } = useQuery({
               <SelectItem value="completed">Terminé</SelectItem>
             </SelectContent>
           </Select>
+          
           <Select value={typeFilter} onValueChange={setTypeFilter}>
             <SelectTrigger>
               <SelectValue placeholder="Type" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Tous les types</SelectItem>
-              <SelectItem value="Poisson Mirroir">Poisson Mirroir</SelectItem>
-              <SelectItem value="Poisson Piques">Poisson Piques</SelectItem>
-              <SelectItem value="Poisson Candy">Poisson Candy</SelectItem>
-              <SelectItem value="Poisson Eden Roc">Poisson Eden Roc</SelectItem>
-              <SelectItem value="Tortues">Tortues</SelectItem>
-              <SelectItem value="Poulpes">Poulpes</SelectItem>
-              <SelectItem value="Méduse">Méduse</SelectItem>
-              <SelectItem value="Pez">Pez</SelectItem>
-              <SelectItem value="Custom">Custom/Autre</SelectItem>
+              {pieceTypes.length === 0 ? (
+                <div className="px-3 py-2 text-sm text-gray-500">Aucun type pour le moment</div>
+              ) : (
+                pieceTypes.map((t: any) => (
+                  <SelectItem key={t.id} value={String(t.id)}>
+                    {t.name}
+                  </SelectItem>
+                ))
+              )}
             </SelectContent>
           </Select>
         </div>
@@ -231,7 +262,7 @@ const { data: galleries = [] } = useQuery({
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {filteredPieces.map((piece: Piece) => (
+              {filteredPieces.map((piece: PieceWithType) => (
                 <Card key={piece.id} className="overflow-hidden">
                   <CardContent className="p-0">
                     {piece.imageUrl && (
@@ -252,7 +283,7 @@ const { data: galleries = [] } = useQuery({
                           {getStatusLabel(piece.status)}
                         </Badge>
                       </div>
-                      <p className="text-sm text-gray-500 mt-1">{piece.type}</p>
+                      <p className="text-sm text-gray-500 mt-1">{piece.pieceType?.name ?? "—"}</p>
                       {piece.description && (
                         <p className="text-sm text-gray-600 mt-2 line-clamp-2">
                           {piece.description}
@@ -285,7 +316,7 @@ const { data: galleries = [] } = useQuery({
                         <Button
                           size="sm"
                           variant="outline"
-                          className="flex-1"
+                          className="flex-1 border-blue-600 text-blue-600 hover:bg-blue-50"
                           onClick={() => setEditPiece(piece)}
                         >
                           <Edit className="h-4 w-4 mr-1" />
@@ -293,6 +324,7 @@ const { data: galleries = [] } = useQuery({
                         </Button>
                         <Button
                           size="sm"
+                            className="border-red-600 text-red-600 hover:bg-red-50"
                           variant="outline"
                           onClick={() => deletePieceMutation.mutate(piece.id)}
                         >

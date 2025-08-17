@@ -5,6 +5,7 @@ import MemoryStore from 'memorystore';
 import { registerAuthRoutes } from './routes-auth';
 import { registerGalleryRoutes } from './routes-galleries';
 import { registerPieceRoutes } from './routes-pieces';
+import { registerPieceTypeRoutes } from './routes-piece-types';
 import path from 'path';
 
 const MemStore = MemoryStore(session);
@@ -53,6 +54,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerAuthRoutes(app, requireAuth);
   registerGalleryRoutes(app, requireAuth);
   registerPieceRoutes(app, requireAuth);
+  registerPieceTypeRoutes(app, requireAuth);
 
   // Healthcheck simple
   app.get('/api/health', (_req, res) => res.json({ ok: true }));

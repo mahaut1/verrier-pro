@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
@@ -11,11 +10,18 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {Form,FormControl,FormField,FormItem,FormLabel,FormMessage} from "@/components/ui/form";
-import {DialogHeader,DialogTitle,} from "@/components/ui/dialog";
+import {DialogHeader,DialogTitle, Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import NewPieceTypeForm from "./new_piece_type_form";
 
-const formSchema = insertPieceSchema.extend({
-  price: z.string().optional(),
-});
+const formSchema = insertPieceSchema
+  .extend({
+    price: z.string().optional(), 
+  })
+  .omit({ pieceTypeId: true })
+  .extend({
+    pieceTypeId: z.number().nullable().optional(), 
+  });
+
 
 type FormData = z.infer<typeof formSchema>;
 
@@ -27,8 +33,23 @@ export default function PieceForm({ onSuccess }: PieceFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: galleries } = useQuery({
+   const { data: galleries = [] } = useQuery({
     queryKey: ["/api/galleries"],
+    queryFn: async () => {
+      const res = await fetch("/api/galleries", { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+
+    const { data: pieceTypes = [] } = useQuery({
+    queryKey: ["/api/piece-types"],
+    queryFn: async () => {
+      const res = await fetch("/api/piece-types", { credentials: "include" });
+      if (!res.ok) throw new Error("Impossible de charger les types");
+      const data = await res.json();
+      return data as { id: number; name: string }[];
+    },
   });
 
   const form = useForm<FormData>({
@@ -36,7 +57,7 @@ export default function PieceForm({ onSuccess }: PieceFormProps) {
     defaultValues: {
       name: "",
       uniqueId: "",
-      type: "",
+      pieceTypeId: null,
       dimensions: "",
       dominantColor: "",
       description: "",
@@ -46,22 +67,21 @@ export default function PieceForm({ onSuccess }: PieceFormProps) {
     },
   });
 
+
   const createPieceMutation = useMutation({
     mutationFn: async (data: FormData) => {
       const submitData = {
         ...data,
         price: data.price ? data.price : null,
         galleryId: data.galleryId || null,
+        pieceTypeId: data.pieceTypeId ?? null,
       };
       return apiRequest("POST", "/api/pieces", submitData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/pieces"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
-      toast({
-        title: "Succès",
-        description: "La pièce a été créée avec succès.",
-      });
+      toast({ title: "Succès", description: "La pièce a été créée avec succès." });
       form.reset();
       onSuccess?.();
     },
@@ -73,7 +93,6 @@ export default function PieceForm({ onSuccess }: PieceFormProps) {
       });
     },
   });
-
   const onSubmit = (data: FormData) => {
     createPieceMutation.mutate(data);
   };
@@ -113,35 +132,48 @@ export default function PieceForm({ onSuccess }: PieceFormProps) {
             )}
           />
 
-          <div className="grid grid-cols-2 gap-4">
+       <div className="grid grid-cols-2 gap-4">
             <FormField
               control={form.control}
-              name="type"
+              name="pieceTypeId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Type</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <div className="flex items-center justify-between">
+                    <FormLabel>Type</FormLabel>
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button type="button" size="sm" variant="outline">+ Nouveau type</Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-md">
+                        <NewPieceTypeForm onCreated={() => {
+                          queryClient.invalidateQueries({ queryKey: ["/api/piece-types"] });
+                        }} />
+                      </DialogContent>
+                    </Dialog> 
+                  </div>
+                  <Select
+                    onValueChange={(val) => field.onChange(val === "none" ? null : Number(val))}
+                    defaultValue={field.value == null ? "none" : String(field.value)}
+                  >
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Sélectionner le type" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="poisson_mirroir">Poisson Mirroir</SelectItem>
-                      <SelectItem value="poisson_piques">Poisson Piques</SelectItem>
-                      <SelectItem value="poisson_candy">Poisson Candy</SelectItem>
-                      <SelectItem value="poisson_eden_roc">Poisson Eden Roc</SelectItem>
-                      <SelectItem value="tortues">Tortues</SelectItem>
-                      <SelectItem value="poulpes">Poulpes</SelectItem>
-                      <SelectItem value="meduse">Méduse</SelectItem>
-                      <SelectItem value="pez">Pez</SelectItem>
-                      <SelectItem value="other">Autre</SelectItem>
+                      <SelectItem value="none">Aucun type</SelectItem>
+                      {pieceTypes.map((t: any) => (
+                        <SelectItem key={t.id} value={String(t.id)}>
+                          {t.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <FormMessage />
                 </FormItem>
               )}
             />
+
 
             <FormField
               control={form.control}

@@ -1,5 +1,5 @@
 import { db } from "../db";
-import { Role } from "@shared/schema";
+import type { Role } from "@shared/schema";
 
 export interface User {
   id: number;
@@ -12,11 +12,63 @@ export interface User {
   createdAt: Date;
 }
 
+export interface MemoryGallery {
+  id: number;
+  userId: number;
+  name: string;
+  contactPerson?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  city?: string | null;
+  country?: string | null;
+  commissionRate?: number | string | null;
+  notes?: string | null;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface MemoryPieceType {
+  id: number;
+  userId: number;
+  name: string;
+  description: string | null;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+export interface MemoryPiece {
+  id: number;
+  userId: number;
+  name: string;
+  uniqueId: string;
+  pieceTypeId: number | null;           
+  dimensions: string | null;
+  dominantColor: string | null;
+  description: string | null;
+  status: string;                       
+  currentLocation: string;              
+  galleryId: number | null;
+  price: number | string | null;        
+  imageUrl: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export type PieceListQuery = {
+  status?: string;
+  pieceTypeId?: number;                
+  galleryId?: number;
+};
+
 export const memory = {
   users: [] as User[],
-  galleries: [] as any[],
-  pieces: [] as any[],
+  galleries: [] as MemoryGallery[],
+  pieces: [] as MemoryPiece[],
+  pieceTypes: [] as MemoryPieceType[],
 };
+
 
 export function seedMemoryOnce() {
   if (memory.users.length === 0) {
@@ -32,6 +84,8 @@ export function seedMemoryOnce() {
     });
   }
 }
+
+
 
 export class StorageBase {
   public useDatabase: boolean;

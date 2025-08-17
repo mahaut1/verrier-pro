@@ -3,8 +3,7 @@ import { pgTable, text, serial,boolean, timestamp, jsonb, varchar, index, intege
 import { z } from "zod";
 import { createInsertSchema } from "drizzle-zod";
 
-export const sessions = pgTable(
-  "sessions",
+export const sessions = pgTable("sessions",
   {
     sid: varchar("sid").primaryKey(),
     sess: jsonb("sess").notNull(),
@@ -41,13 +40,26 @@ export const galleries= pgTable("galleries",{
   updatedAt: timestamp("updated_at").defaultNow()
 })
 
+export const pieceTypes=pgTable('pieces_types',{
+  id: serial('id').primaryKey(),
+  userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  name: text("name").notNull().unique(),
+  description: text("description"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+},
+  (t) => [
+    // Un nom de type ne doit pas être dupliqué pour le même user
+    uniqueIndex("ux_piece_types_user_name").on(t.userId, t.name),
+  ],)
+
 export const pieces = pgTable('pieces',{
   id:serial('id').primaryKey(),
   userId: integer("user_id").references(() => users.id, { onDelete: 'cascade' }).notNull(),
   name: text("name").notNull(),
-    uniqueId: text("unique_id").notNull().unique(),
-  type: text("type").notNull(),
-  dimensions: text("dimensions"),
+  uniqueId: text("unique_id").notNull(),
+  pieceTypeId: integer("piece_type_id").references(() => pieceTypes.id, { onDelete: "set null" }),  dimensions: text("dimensions"),
   dominantColor: text("dominant_color"),
   description: text("description"),
   status: text("status").notNull().default("workshop"), // ✅
@@ -60,6 +72,9 @@ export const pieces = pgTable('pieces',{
 }, (t) => [
   uniqueIndex('ux_pieces_user_uniqueid').on(t.userId, t.uniqueId),
 ]);
+
+
+
 // Insert schemas
 export const insertGallerySchema = createInsertSchema(galleries).omit({
   id: true, userId: true, createdAt: true, updatedAt: true,
@@ -67,6 +82,10 @@ export const insertGallerySchema = createInsertSchema(galleries).omit({
 
 export const insertPieceSchema = createInsertSchema(pieces).omit({
   id: true, userId: true, createdAt: true, updatedAt: true,
+});
+
+export const insertPieceTypeSchema = createInsertSchema(pieceTypes).omit({
+  id: true, userId: true, createdAt: true, updatedAt: true, isActive: true,
 });
 
 // Users (role)
@@ -89,3 +108,5 @@ export type Gallery = typeof galleries.$inferSelect;
 export type InsertGallery = z.infer<typeof insertGallerySchema>;
 export type Piece = typeof pieces.$inferSelect;
 export type InsertPiece = z.infer<typeof insertPieceSchema>
+export type PieceType = typeof pieceTypes.$inferSelect;
+export type InsertPieceType = z.infer<typeof insertPieceTypeSchema>;
