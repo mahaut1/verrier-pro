@@ -56,6 +56,32 @@ export interface MemoryPiece {
   updatedAt: Date;
 }
 
+export interface MemoryStockItem {
+  id: number;
+  userId: number;
+  name: string;
+  type: string;         
+  category: string;      
+  currentQuantity: number;
+  unit: string;         
+  minimumThreshold: number;
+  supplier: string | null;
+  notes: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface MemoryStockMovement {
+  id: number;
+  userId: number;
+  stockItemId: number | null; // peut être null si l’article est supprimé
+  type: "in" | "out";
+  quantity: number;
+  reason: string;
+  notes: string | null;
+  createdAt: Date;
+}
+
 export type PieceListQuery = {
   status?: string;
   pieceTypeId?: number;                
@@ -67,6 +93,8 @@ export const memory = {
   galleries: [] as MemoryGallery[],
   pieces: [] as MemoryPiece[],
   pieceTypes: [] as MemoryPieceType[],
+    stockItems: [] as MemoryStockItem[],        
+  stockMovements: [] as MemoryStockMovement[]
 };
 
 

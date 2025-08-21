@@ -2,6 +2,8 @@ import { UsersStorage } from "./users.storage";
 import { PiecesStorage } from "./pieces.storage";
 import { GalleriesStorage } from "./galleries.storage";
 import { PieceTypesStorage } from "./piece-types.storage";
+import { StockItemsStorage } from "./stock-items.storage";
+import { StockMovementsStorage } from "./stock-movements.storage";
 export type { PieceListQuery } from "./storage.base";
 
 
@@ -9,6 +11,8 @@ const users = new UsersStorage();
 const pieces = new PiecesStorage();
 const galleries = new GalleriesStorage();
 const pieceTypes = new PieceTypesStorage();
+const stockItems = new StockItemsStorage();
+const stockMovements = new StockMovementsStorage();
 
 export const storage = {
   // USERS
@@ -61,8 +65,26 @@ export const storage = {
     pieceTypes.updatePieceType(userId, id, patch),
   deletePieceType: (userId: number, id: number) =>
     pieceTypes.deletePieceType(userId, id),
+
+    // STOCK
+// ITEMS
+  createStockItem:  (...a: Parameters<StockItemsStorage["createItem"]>) => stockItems.createItem(...a),
+  listStockItems:   (...a: Parameters<StockItemsStorage["listItems"]>) => stockItems.listItems(...a),
+  getStockItemById: (...a: Parameters<StockItemsStorage["getItemById"]>) => stockItems.getItemById(...a),
+  updateStockItem:  (...a: Parameters<StockItemsStorage["updateItem"]>) => stockItems.updateItem(...a),
+  deleteStockItem:  (...a: Parameters<StockItemsStorage["deleteItem"]>) => stockItems.deleteItem(...a),
+
+  // MOVEMENTS
+  createStockMovement:   (...a: Parameters<StockMovementsStorage["createMovement"]>) => stockMovements.createMovement(...a),
+  listStockMovements:    (...a: Parameters<StockMovementsStorage["listMovements"]>) => stockMovements.listMovements(...a),
+  getStockMovementById:  (...a: Parameters<StockMovementsStorage["getStockMovementById"]>) => stockMovements.getStockMovementById(...a),
+  updateStockMovement:   (...a: Parameters<StockMovementsStorage["updateMovement"]>) => stockMovements.updateMovement(...a),
+  deleteStockMovement:   (...a: Parameters<StockMovementsStorage["deleteMovement"]>) => stockMovements.deleteMovement(...a),
+
 };
 
 
-export { users, pieces, galleries, pieceTypes }; 
+
+
+export { users, pieces, galleries, pieceTypes, stockItems, stockMovements }; 
 export type AppStorage = typeof storage;

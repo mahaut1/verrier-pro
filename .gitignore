@@ -6,3 +6,4 @@ node_modules
 dist
 .env.production.local
 prod.env
+.env.prod

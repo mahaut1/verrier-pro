@@ -35,7 +35,7 @@ export default function Header() {
 
   const nav = [
     { to: "/", label: "Tableau de bord", icon: Home, end: true },
-    { to: "/stock", label: "Stock", icon: Package },
+    { to: "/stocks", label: "Stock", icon: Package },
     { to: "/pieces", label: "Pièces", icon: Palette },
     { to: "/galleries", label: "Galeries", icon: Building },
     { to: "/commands", label: "Commandes", icon: ShoppingCart },
@@ -88,14 +88,6 @@ export default function Header() {
 
         {/* Right: quick CTA + user + logout */}
         <div className="flex items-center gap-3">
-          <Button
-            onClick={() => navigate("/pieces")}
-            className="bg-blue-600 hover:bg-blue-700"
-            size="sm"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Nouvelle pièce
-          </Button>
 
           {isAuthenticated && (
             <>

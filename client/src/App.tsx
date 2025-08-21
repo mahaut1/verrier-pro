@@ -4,12 +4,12 @@ import { queryClient } from "./lib/queryClient";
 import { Toaster } from "sonner";
 import { useAuth } from "./hooks/useAuth";
 import AppLayout from "./components/layout/AppLayout";
-
 import Home from "./pages/Home";
 import Pieces from "./pages/pieces";
 import Login from "./pages/login";
 import Register from "./pages/register";
 import Galleries from "./pages/galleries";
+import Stocks from "./pages/stocks";
 
 function RequireAuth({ children }: { children: JSX.Element }) {
   const { isLoading, isAuthenticated } = useAuth();
@@ -47,6 +47,8 @@ export default function App() {
             <Route index element={<Home />} />
             <Route path="pieces" element={<Pieces />} />
             <Route path="galleries" element={<Galleries />} />
+            <Route path="stocks" element={<Stocks />} />
+
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />

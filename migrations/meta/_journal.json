@@ -36,6 +36,13 @@
       "when": 1755419971930,
       "tag": "0004_aromatic_ghost_rider",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1755533614113,
+      "tag": "0005_bouncy_lyja",
+      "breakpoints": true
     }
   ]
 }
