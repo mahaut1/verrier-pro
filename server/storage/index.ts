@@ -1,10 +1,10 @@
-import { UsersStorage } from "./users.storage";
-import { PiecesStorage } from "./pieces.storage";
-import { GalleriesStorage } from "./galleries.storage";
-import { PieceTypesStorage } from "./piece-types.storage";
-import { StockItemsStorage } from "./stock-items.storage";
-import { StockMovementsStorage } from "./stock-movements.storage";
-export type { PieceListQuery } from "./storage.base";
+import { UsersStorage } from "./users.storage.js";
+import { PiecesStorage } from "./pieces.storage.js";
+import { GalleriesStorage } from "./galleries.storage.js";
+import { PieceTypesStorage } from "./piece-types.storage.js";
+import { StockItemsStorage } from "./stock-items.storage.js";
+import { StockMovementsStorage } from "./stock-movements.storage.js";
+export type { PieceListQuery } from "./storage.base.js";
 
 
 const users = new UsersStorage();

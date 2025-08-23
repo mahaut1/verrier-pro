@@ -1,7 +1,7 @@
-import { db } from "../db";
-import { galleries } from "@shared/schema";
+import { db } from "../db.js";
+import { galleries } from "../../shared/schema.js";
 import { and, eq, like, SQL } from "drizzle-orm";
-import { StorageBase, memory } from "./storage.base";
+import { StorageBase, memory } from "./storage.base.js";
 
 type GalleryInsert = typeof galleries.$inferInsert;
 type GalleryRow = typeof galleries.$inferSelect;

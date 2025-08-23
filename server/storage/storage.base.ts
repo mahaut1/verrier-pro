@@ -1,5 +1,5 @@
-import { db } from "../db";
-import type { Role } from "@shared/schema";
+import { db } from "../db.js";
+import type { Role } from "../../shared/schema.js";
 
 export interface User {
   id: number;
@@ -126,7 +126,7 @@ export class StorageBase {
     if (!this.useDatabase) seedMemoryOnce();
   }
 
-  protected async assertDbOrFallback(label = "Generic") {
+  protected async assertDbOrFallback(_label = "Generic") {
     if (!this.useDatabase) return;
     try {
       await db.execute("SELECT 1");

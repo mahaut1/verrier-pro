@@ -1,11 +1,11 @@
-import { db } from "../db";
-import * as schema from "@shared/schema";
+import { db } from "../db.js";
+import * as schema from "../../shared/schema.js";
 import { and, eq, gte, lte, SQL } from "drizzle-orm";
 import {
   StorageBase,
   memory,
   type MemoryStockMovement,
-} from "./storage.base";
+} from "./storage.base.js";
 
 // drizzle numeric => string
 const toDecStr = (v: number | string): string =>

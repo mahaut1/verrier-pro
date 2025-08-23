@@ -1,7 +1,7 @@
 import type {Express as ExpressApp, Request, Response, NextFunction, RequestHandler,} from "express";
 import { z } from "zod";
-import { storage } from "./storage";
-import { insertStockItemSchema, insertStockMovementSchema } from "@shared/schema";
+import { storage } from "./storage/index.js";
+import { insertStockItemSchema, insertStockMovementSchema } from "../shared/schema.js";
 
 /* zod  */
 const idParam = z.object({ id: z.coerce.number().int().positive() });

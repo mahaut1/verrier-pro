@@ -1,7 +1,7 @@
-import { db } from "../db";
-import * as schema from "@shared/schema";
+import { db } from "../db.js";
+import * as schema from "../../shared/schema.js";
 import { and, eq, like, SQL } from "drizzle-orm";
-import { StorageBase, memory, type MemoryPieceType } from "./storage.base";
+import { StorageBase, memory, type MemoryPieceType } from "./storage.base.js";
 
 
 type PieceTypeInsert       = typeof schema.pieceTypes.$inferInsert;

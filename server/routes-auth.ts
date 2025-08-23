@@ -1,7 +1,7 @@
 import type { Express, Request, Response } from 'express';
 import bcrypt from 'bcrypt';
-import { insertUserSchema } from '@shared/schema';
-import { UsersStorage } from './storage/users.storage';
+import { insertUserSchema } from "../shared/schema.js";
+import { UsersStorage } from './storage/users.storage.js';
 
 export const storages = {
   users: new UsersStorage(),

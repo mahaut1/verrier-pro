@@ -6,8 +6,8 @@ import type {
   RequestHandler,
 } from "express";
 import { z } from "zod";
-import { storage } from "./storage";
-import { insertPieceTypeSchema } from "@shared/schema";
+import { storage } from "./storage/index.js";
+import { insertPieceTypeSchema } from "../shared/schema.js";
 
 // ---------- helpers ----------
 const idParam = z.object({ id: z.coerce.number().int().positive() });

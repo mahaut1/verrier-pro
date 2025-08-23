@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "outDir": "dist",            
+    "rootDir": ".",              
+    "module": "ES2020",
+    "moduleResolution": "Node",
+    "target": "ES2022",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "sourceMap": false,
+    "isolatedModules": false
+  },
+  "include": ["server/**/*.ts", "shared/**/*.ts"]
+}

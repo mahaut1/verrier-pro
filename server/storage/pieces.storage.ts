@@ -1,12 +1,12 @@
-import { db } from "../db";
-import * as schema from "@shared/schema";
+import { db } from "../db.js";
+import * as schema from "../../shared/schema.js";
 import { and, eq, SQL } from "drizzle-orm";
 import {
   StorageBase,
   memory,
   type PieceListQuery,
   type MemoryPiece,
-} from "./storage.base";
+} from "./storage.base.js";
 
 type PieceInsert = typeof schema.pieces.$inferInsert;
 type PieceRow    = typeof schema.pieces.$inferSelect;

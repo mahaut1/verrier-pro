@@ -2,11 +2,11 @@ import express, { type Express, type Request, type Response, type NextFunction }
 import { createServer, type Server } from 'http';
 import session from 'express-session';
 import MemoryStore from 'memorystore';
-import { registerAuthRoutes } from './routes-auth';
-import { registerGalleryRoutes } from './routes-galleries';
-import { registerPieceRoutes } from './routes-pieces';
-import { registerPieceTypeRoutes } from './routes-piece-types';
-import { registerStockRoutes } from "./routes-stock";
+import { registerAuthRoutes } from './routes-auth.js';
+import { registerGalleryRoutes } from './routes-galleries.js';
+import { registerPieceRoutes } from './routes-pieces.js';
+import { registerPieceTypeRoutes } from './routes-piece-types.js';
+import { registerStockRoutes } from "./routes-stock.js";
 import path from 'path';
 
 const MemStore = MemoryStore(session);

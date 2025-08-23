@@ -1,7 +1,7 @@
 import type { Express, Request, Response } from 'express';
 import { z } from 'zod';
-import { insertGallerySchema } from '@shared/schema';
-import { GalleriesStorage } from './storage/galleries.storage';
+import { insertGallerySchema } from "../shared/schema.js";
+import { GalleriesStorage } from './storage/galleries.storage.js';
 
 export const storages = {
   galleries: new GalleriesStorage(),

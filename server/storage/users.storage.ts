@@ -1,8 +1,8 @@
-import { db } from "../db";
-import * as schema from "@shared/schema";
+import { db } from "../db.js";
+import * as schema from "../../shared/schema.js";
 import { eq } from "drizzle-orm";
-import type { Role } from "@shared/schema"; 
-import { StorageBase, memory, User } from "./storage.base";
+import type { Role } from "../../shared/schema.js"; 
+import { StorageBase, memory, User } from "./storage.base.js";
 
 
 export interface CreateUserInput {

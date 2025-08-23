@@ -10,10 +10,10 @@ import multer from "multer";
 import type { FileFilterCallback } from "multer";
 import path from "path";
 import fs from "fs";
-import { storage } from "./storage";
-import { insertPieceSchema } from "@shared/schema";
-import type * as sch from "@shared/schema";
-import type { PieceListQuery } from "./storage";
+import { storage } from "./storage/index.js";
+import { insertPieceSchema } from "../shared/schema.js";
+import type * as sch from "../shared/schema.js";
+import type { PieceListQuery } from "./storage/index.js";
 
 
 // ---------- types locaux ----------
