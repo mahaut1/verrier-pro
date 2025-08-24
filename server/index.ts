@@ -1,11 +1,19 @@
 import dotenv from "dotenv";
 import path from "path";
+import fs from "fs";
 
-// Charger le bon fichier .env selon NODE_ENV
-const envFile = process.env.NODE_ENV === "production" ? ".env.prod" : ".env";
-dotenv.config({ path: path.resolve(process.cwd(), envFile) });
+const isProd = process.env.NODE_ENV === "production";
 
-console.log(`✅ Variables chargées depuis ${envFile}`);
+if (!isProd) {
+  const envPath = path.resolve(process.cwd(), ".env");
+  if (fs.existsSync(envPath)) {
+    dotenv.config({ path: envPath });
+    console.log("✅ Variables chargées depuis .env");
+  }
+} else {
+  console.log("ℹ️ Prod: on utilise les variables d'environnement (Railway).");
+}
+
 console.log("DATABASE_URL:", process.env.DATABASE_URL ? "CHARGÉE" : "❌ MANQUANTE");
 console.log("SESSION_SECRET:", process.env.SESSION_SECRET ? "CHARGÉE" : "❌ MANQUANTE");
 console.log("NODE_ENV:", process.env.NODE_ENV);

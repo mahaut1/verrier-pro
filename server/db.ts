@@ -25,43 +25,68 @@ if (process.env.PG_CA_CERT_BASE64) {
   caPem = process.env.PG_CA_CERT.replace(/\\n/g, "\n");
 }
 
-// Railway internal / local => pas de TLS, sinon vérif stricte + CA + SNI
+// Railway internal / local => pas de TLS
 const isRailwayInternal = /railway\.internal$/i.test(host);
 const isLocalHost = host === "127.0.0.1" || host === "localhost";
 
-type TLSOpts = false | {
-  rejectUnauthorized: true;
-  ca?: string;
-  servername?: string;
-  checkServerIdentity?: (host: string, cert: tls.PeerCertificate) => Error | undefined;
-};
+type TLSOpts =
+  | false
+  | {
+      rejectUnauthorized: boolean;
+      ca?: string;
+      servername?: string;
+      checkServerIdentity?: (host: string, cert: tls.PeerCertificate) => Error | undefined;
+    };
 
-// le nom attendu dans le certificat (SAN/CN)
-const expectedName = process.env.PG_TLS_SERVERNAME || "localhost";
+// sslmode: disable | require | verify-ca | verify-full
+const sslmode =
+  (process.env.PG_SSLMODE || u.searchParams.get("sslmode") || "require").toLowerCase();
 
-const ssl: TLSOpts =
-  (isLocalHost || isRailwayInternal)
-    ? false
-    : {
-        rejectUnauthorized: true,
-        ...(caPem ? { ca: caPem } : {}),
-        servername: expectedName, // SNI envoyé
-        // ⚠️ forcer la comparaison du cert contre `expectedName`
-        checkServerIdentity: (_host, cert) => tls.checkServerIdentity(expectedName, cert),
-      };
+const expectedName = process.env.PG_TLS_SERVERNAME || host;
 
+let ssl: TLSOpts;
+if (isLocalHost || isRailwayInternal || sslmode === "disable") {
+  ssl = false;
+} else if (sslmode === "require") {
+  // TLS chiffré sans vérification de la chaîne/hostname
+  ssl = { rejectUnauthorized: false, servername: expectedName };
+} else if (sslmode === "verify-ca") {
+  if (!caPem) throw new Error("verify-ca requires PG_CA_CERT(_BASE64)");
+  // Vérifie la CA, ignore la correspondance de nom
+  ssl = {
+    rejectUnauthorized: true,
+    servername: expectedName,
+    ca: caPem,
+    checkServerIdentity: () => undefined,
+  };
+} else if (sslmode === "verify-full") {
+  if (!caPem) throw new Error("verify-full requires PG_CA_CERT(_BASE64)");
+  // Vérifie CA + hostname (SNI)
+  ssl = {
+    rejectUnauthorized: true,
+    servername: expectedName,
+    ca: caPem,
+    checkServerIdentity: (_h, cert) => tls.checkServerIdentity(expectedName, cert),
+  };
+} else {
+  throw new Error(`Unsupported PG_SSLMODE: ${sslmode}`);
+}
 
-// Garde-fou prod : exiger une CA si on vérifie
-if (isProd && ssl !== false && !ssl.ca) {
-  throw new Error("Production requires PG_CA_CERT(_BASE64) when using verified TLS.");
+// Garde-fou prod : exiger une CA quand on est en verify-*
+if (isProd && ssl && (sslmode === "verify-ca" || sslmode === "verify-full") && !(ssl as any).ca) {
+  throw new Error("Production verify-* requires PG_CA_CERT(_BASE64).");
 }
 
 // Logs utiles
 const safeUrl = urlStr.replace(/(postgres(?:ql)?:\/\/[^:]+:)[^@]+@/, "$1***@");
 console.log("🔌 DB target:", safeUrl);
-console.log("   Env:", NODE_ENV, "| SSL:", ssl === false ? "disabled" : "verify-full");
-if (ssl !== false) console.log("   TLS opts:", { servername: ssl.servername, hasCA: !!ssl.ca });
-
+console.log("   Env:", NODE_ENV, "| sslmode:", sslmode, "| SSL:", ssl === false ? "disabled" : "enabled");
+if (ssl !== false) {
+  console.log("   TLS opts:", {
+    servername: (ssl as any).servername,
+    hasCA: !!(ssl as any).ca,
+  });
+}
 // ⚠️ ICI on n’utilise PAS connectionString
 const poolConfig: PoolConfig = {
   host,
