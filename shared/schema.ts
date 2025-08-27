@@ -1,5 +1,5 @@
 
-import { pgTable, text, serial,boolean, timestamp, jsonb, varchar, index, integer, uniqueIndex, numeric } from "drizzle-orm/pg-core";
+import { pgTable, text, serial,boolean, timestamp, jsonb, varchar, index, integer, uniqueIndex, numeric, decimal } from "drizzle-orm/pg-core";
 import { z } from "zod";
 import { createInsertSchema } from "drizzle-zod";
 
@@ -120,9 +120,53 @@ export const stockMovements = pgTable("stock_movements",
   ]
 );
 
+export const orders = pgTable("orders", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  orderNumber: text("order_number").notNull(),
+  galleryId: integer("gallery_id").references(() => galleries.id),
+  status: text("status").notNull().default("pending"), // 'pending', 'processing', 'shipped', 'delivered', 'cancelled'
+  totalAmount: decimal("total_amount", { precision: 10, scale: 2 }),
+  shippingAddress: text("shipping_address"),
+  notes: text("notes"),
+  shippedAt: timestamp("shipped_at"),
+  deliveredAt: timestamp("delivered_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (t) => [
+  uniqueIndex("ux_orders_user_ordernumber").on(t.userId, t.orderNumber),
+]);
 
-// Insert schemas
-// NOTE: numeric -> string (avec transform) 
+export const orderItems = pgTable("order_items", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  orderId: integer("order_id").references(() => orders.id, { onDelete: "cascade" }),  pieceId: integer("piece_id").references(() => pieces.id),
+  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+
+
+export const orderStatusEnum = z.enum(["pending", "processing", "shipped", "delivered", "cancelled"]);
+export type OrderStatus = z.infer<typeof orderStatusEnum>;
+
+export const insertOrderSchema = createInsertSchema(orders, {
+  orderNumber: z.string().min(1),
+  status: orderStatusEnum.optional(),                          
+  shippingAddress: z.string().min(1).optional().nullable(),
+  notes: z.string().min(1).optional().nullable(),
+  shippedAt: z.coerce.date().optional().nullable(),
+  deliveredAt: z.coerce.date().optional().nullable(),
+}).omit({
+  id: true,
+  userId: true,
+  totalAmount: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  galleryId: z.number().int().positive().optional().nullable(),
+});
+
 export const insertStockItemSchema = createInsertSchema(stockItems, {
   currentQuantity: z.union([z.string(), z.number()]).transform((v) => String(v)),
   minimumThreshold: z.union([z.string(), z.number()]).transform((v) => String(v)),
@@ -135,6 +179,21 @@ export const insertStockItemSchema = createInsertSchema(stockItems, {
 }).omit({
   id: true, userId: true, createdAt: true, updatedAt: true,
 });
+
+export const updateOrderSchema = insertOrderSchema.partial();
+
+export const insertOrderItemSchema = createInsertSchema(orderItems, {
+  price: z.union([z.string(), z.number()]).transform((v) => String(v)),
+}).omit({
+  id: true,
+  userId: true,
+  createdAt: true,
+}).extend({
+  orderId: z.number().int().positive(),                         // on exige un orderId côté API
+  pieceId: z.number().int().positive().optional().nullable(),
+});
+
+export const updateOrderItemSchema = insertOrderItemSchema.partial();
 
 export const insertStockMovementSchema = createInsertSchema(stockMovements, {
   type: z.enum(["in", "out"]),
@@ -185,3 +244,7 @@ export type StockItem = typeof stockItems.$inferSelect;
 export type InsertStockItem = z.infer<typeof insertStockItemSchema>;
 export type StockMovement = typeof stockMovements.$inferSelect;
 export type InsertStockMovement = z.infer<typeof insertStockMovementSchema>;
+export type Order = typeof orders.$inferSelect;
+export type InsertOrder = z.infer<typeof insertOrderSchema>;
+export type OrderItem = typeof orderItems.$inferSelect;
+export type InsertOrderItem = z.infer<typeof insertOrderItemSchema>;

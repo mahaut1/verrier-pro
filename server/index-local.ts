@@ -10,7 +10,7 @@ console.log("NODE_ENV:", process.env.NODE_ENV);
 
 (async () => {
   const express = (await import("express")).default;
-  const { registerRoutes } = await import("./routes.js");
+  const { registerRoutes } = await import("./routes/routes.js");
   const { setupVite, log } = await import("./vite.js");
 
   const app = express();

@@ -7,6 +7,8 @@ import { registerGalleryRoutes } from './routes-galleries.js';
 import { registerPieceRoutes } from './routes-pieces.js';
 import { registerPieceTypeRoutes } from './routes-piece-types.js';
 import { registerStockRoutes } from "./routes-stock.js";
+import {registerOrderRoutes} from "./routes-orders.js";
+import {registerOrderItemRoutes} from "./routes-order-items.js"
 import path from 'path';
 
 const MemStore = MemoryStore(session);
@@ -57,6 +59,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerPieceRoutes(app, requireAuth);
   registerPieceTypeRoutes(app, requireAuth);
   registerStockRoutes(app, requireAuth);
+  registerOrderRoutes(app, requireAuth);
+  registerOrderItemRoutes(app, requireAuth);
 
   // Healthcheck simple
   app.get('/api/health', (_req, res) => res.json({ ok: true }));

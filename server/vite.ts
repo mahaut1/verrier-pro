@@ -4,7 +4,6 @@ import path from "path";
 import { createServer as createViteServer, createLogger } from "vite";
 import { type Server } from "http";
 import viteConfig from "../vite.config.js";
-import { nanoid } from "nanoid";
 
 
 const viteLogger = createLogger();
@@ -20,41 +19,43 @@ export function log(message: string, source = "express") {
   console.log(`${formattedTime} [${source}] ${message}`);
 }
 
-export async function setupVite(app: Express, server: Server) {
-  const serverOptions = {
-    middlewareMode: true,
-    hmr: { server },
-    allowedHosts: true as true,
-  };
 
+export async function setupVite(app: Express, server: Server) {
   const vite = await createViteServer({
     ...viteConfig,
     configFile: false,
     customLogger: {
       ...viteLogger,
-      error: (msg, options) => {
-        viteLogger.error(msg, options);
-        process.exit(1);
-      },
+      // Ne kill pas le process en dev
+      error: (msg, options) => viteLogger.error(msg, options),
     },
-    server: serverOptions,
+    server: {
+      middlewareMode: true,
+      hmr: { server },
+      allowedHosts: true,
+    },
     appType: "custom",
   });
 
   app.use(vite.middlewares);
-  app.get('*', async (req, res, next) => {
-    const url = req.originalUrl;
 
+  // Mise en cache mémoire d'index.html pour éviter les I/O et le retraitement
+  const clientTemplatePath = path.resolve(process.cwd(), "client", "index.html");
+  let templateCache: string | null = null;
+  async function getTemplate() {
+    if (!templateCache) {
+      templateCache = await fs.promises.readFile(clientTemplatePath, "utf-8");
+    }
+    return templateCache;
+  }
+
+  // SPA fallback — exclut /api
+  app.get(/^\/(?!api)(.*)/, async (req, res, next) => {
     try {
-         const clientTemplate = path.resolve(process.cwd(), "client", "index.html");
-
-      let template = await fs.promises.readFile(clientTemplate, "utf-8");
-      template = template.replace(
-        `src="/src/main.tsx"`,
-        `src="/src/main.tsx?v=${nanoid()}"`
-      );
-      const page = await vite.transformIndexHtml(url, template);
-      res.status(200).set({ "Content-Type": "text/html" }).end(page);
+      const url = req.originalUrl;
+      const raw = await getTemplate();              // pas de nanoid ici
+      const html = await vite.transformIndexHtml(url, raw);
+      res.status(200).set({ "Content-Type": "text/html" }).end(html);
     } catch (e) {
       vite.ssrFixStacktrace(e as Error);
       next(e);
@@ -70,9 +71,26 @@ export function serveStatic(app: Express) {
     );
   }
 
-  app.use(express.static(distPath));
+  app.use(
+    express.static(distPath, {
+      etag: true,
+      lastModified: true,
+      // défaut court
+      maxAge: "5m",
+      setHeaders(res, filePath) {
+        // cache long et immutable pour les assets fingerprintés
+        if (/\.[a-f0-9]{8,}\.(css|js|png|jpe?g|gif|webp|svg|ico|woff2?)$/i.test(filePath)) {
+          res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+        } else if (filePath.endsWith("index.html")) {
+          // toujours aller le revalider
+          res.setHeader("Cache-Control", "no-cache");
+        }
+      },
+    })
+  );
 
-  app.get('*', (_req, res) => {
+  // SPA fallback — exclut /api
+  app.get(/^\/(?!api)(.*)/, (_req, res) => {
     res.sendFile(path.resolve(distPath, "index.html"));
   });
 }

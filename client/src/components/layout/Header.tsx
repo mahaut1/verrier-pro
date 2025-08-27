@@ -5,19 +5,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "../../hooks/useAuth";
 import { apiRequest } from "../../lib/queryClient";
-import {
-  Home,
-  Package,
-  Palette,
-  Building,
-  ShoppingCart,
-  Calendar,
-  Menu,
-  X,
-  LogOut,
-  User,
-  Plus,
-} from "lucide-react";
+import {Home, Package, Palette, Building, ShoppingCart, Calendar, Menu, X, LogOut,  User,  Plus,} from "lucide-react";
 
 export default function Header() {
   const { user, isAuthenticated } = useAuth();
@@ -38,7 +26,7 @@ export default function Header() {
     { to: "/stocks", label: "Stock", icon: Package },
     { to: "/pieces", label: "Pièces", icon: Palette },
     { to: "/galleries", label: "Galeries", icon: Building },
-    { to: "/commands", label: "Commandes", icon: ShoppingCart },
+    { to: "/orders", label: "Commandes", icon: ShoppingCart },
     { to: "/events", label: "Événements", icon: Calendar },
   ];
 

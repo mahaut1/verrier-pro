@@ -82,6 +82,30 @@ export interface MemoryStockMovement {
   createdAt: Date;
 }
 
+export type MemoryOrder = {
+  id: number;
+  userId: number;
+  orderNumber: string;
+  galleryId: number | null;
+  status: "pending" | "processing" | "shipped" | "delivered" | "cancelled";
+  totalAmount: number;          // ⚠️ en mémoire -> number
+  shippingAddress: string | null;
+  notes: string | null;
+  shippedAt: Date | null;
+  deliveredAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type MemoryOrderItem = {
+  id: number;
+  userId: number;
+  orderId: number | null;
+  pieceId: number | null;
+  price: number;               
+  createdAt: Date;
+};
+
 export type PieceListQuery = {
   status?: string;
   pieceTypeId?: number;                
@@ -94,7 +118,9 @@ export const memory = {
   pieces: [] as MemoryPiece[],
   pieceTypes: [] as MemoryPieceType[],
     stockItems: [] as MemoryStockItem[],        
-  stockMovements: [] as MemoryStockMovement[]
+  stockMovements: [] as MemoryStockMovement[],
+   orders: [] as MemoryOrder[],
+  orderItems: [] as MemoryOrderItem[]
 };
 
 

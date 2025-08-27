@@ -14,7 +14,7 @@ import type { Piece, Gallery } from "@shared/schema";
 import PieceForm from "../components/forms/piece-form";
 import PieceEditForm from "../components/forms/piece-edit-form";
 import NewPieceTypeForm from "../components/forms/new_piece_type_form";
-
+import {resolveImageUrl} from '../lib/images'
 
 type PieceWithType = Piece & { pieceType?: { id: number; name: string } | null };
 
@@ -268,7 +268,7 @@ const { data: galleries = [] } = useQuery({
                     {piece.imageUrl && (
                       <div className="aspect-w-16 aspect-h-9">
                         <img
-                          src={piece.imageUrl}
+                          src={resolveImageUrl(piece.imageUrl)}
                           alt={piece.name}
                           className="w-full h-48 object-cover"
                         />

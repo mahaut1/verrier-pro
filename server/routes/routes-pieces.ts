@@ -10,19 +10,19 @@ import multer from "multer";
 import type { FileFilterCallback } from "multer";
 import path from "path";
 import fs from "fs";
-import { storage } from "./storage/index.js";
-import { insertPieceSchema } from "../shared/schema.js";
-import type * as sch from "../shared/schema.js";
-import type { PieceListQuery } from "./storage/index.js";
+import { storage } from "../storage/index.js";
+import { insertPieceSchema } from "../../shared/schema.js";
+import type * as sch from "../../shared/schema.js";
+import type { PieceListQuery } from "../storage/index.js";
 
 
-// ---------- types locaux ----------
+//  types locaux 
 type PieceInsert = typeof sch.pieces.$inferInsert;
 type PiecePatch = Partial<
   Omit<PieceInsert, "id" | "userId" | "createdAt" | "updatedAt">
 >;
 
-// ---------- helpers ----------
+//  helpers 
 const idParam = z.object({ id: z.coerce.number().int().positive() });
 const updatePieceSchema = insertPieceSchema.partial();
 
@@ -60,6 +60,19 @@ const upload = multer({
   },
 });
 
+// Schéma de query pour LIST
+const listQuerySchema = z.object({
+  status: z.string().trim().min(1).optional(),                // ex: 'workshop', 'gallery', 'sold', ...
+  pieceTypeId: z.coerce.number().int().positive().optional(),
+  galleryId: z.coerce.number().int().positive().optional(),
+  // filtre d’éligibilité pour une commande
+  availableForOrder: z
+    .enum(["true", "false"])
+    .transform(v => v === "true")
+    .optional(),
+  orderId: z.coerce.number().int().positive().optional(),
+});
+
 export function registerPieceRoutes(app: ExpressApp, requireAuth: RequestHandler) {
   // CREATE
   app.post(
@@ -77,30 +90,42 @@ export function registerPieceRoutes(app: ExpressApp, requireAuth: RequestHandler
     })
   );
 
-  // LIST (+ filtres: status, pieceTypeId, galleryId)
+  // LIST (+ filtres: status, pieceTypeId, galleryId, availableForOrder/orderId)
   app.get(
     "/api/pieces",
     requireAuth,
     handleAsync(async (req, res) => {
-      const status = (req.query.status as string | undefined) ?? undefined;
-
-      const pieceTypeIdRaw =
-        req.query.pieceTypeId != null ? Number(req.query.pieceTypeId) : undefined;
-      const pieceTypeId =
-        pieceTypeIdRaw != null && !Number.isNaN(pieceTypeIdRaw)
-          ? pieceTypeIdRaw
-          : undefined;
-
-      const galleryIdRaw =
-        req.query.galleryId != null ? Number(req.query.galleryId) : undefined;
-      const galleryId =
-        galleryIdRaw != null && !Number.isNaN(galleryIdRaw)
-          ? galleryIdRaw
-          : undefined;
-
-      const filters: PieceListQuery = { status, pieceTypeId, galleryId };
-
-      const rows = await storage.listPieces(req.session.userId!, filters);
+      const parsed = listQuerySchema.safeParse(req.query);
+      if (!parsed.success) {
+        return res
+          .status(400)
+          .json({ message: "Paramètres invalides", errors: parsed.error.issues });
+      }
+      const { status, pieceTypeId, galleryId, availableForOrder, orderId } = parsed.data;
+      const filters: PieceListQuery = {
+        status,
+        pieceTypeId,
+        galleryId,
+      };
+      let rows = await storage.listPieces(req.session.userId!, filters);
+      if (availableForOrder) {
+        // Récupère la galerie cible depuis l'order si fourni
+        let targetGalleryId: number | undefined;
+        if (orderId) {
+          const order = await storage.getOrderById(req.session.userId!, orderId);
+          if (!order) return res.status(404).json({ message: "Commande introuvable" });
+          targetGalleryId = order.galleryId ?? undefined;
+        } else if (galleryId) {
+          targetGalleryId = galleryId;
+        }
+        // Éligible = non vendue, et si commande a une galerie :
+        // - pièces sans galerie OU avec la même galerie
+        rows = rows.filter((p) => {
+          const notSold = p.status !== "sold";
+          if (!targetGalleryId) return notSold;
+          return notSold && (p.galleryId == null || p.galleryId === targetGalleryId);
+        });
+      }
       return res.json(rows);
     })
   );
@@ -133,12 +158,18 @@ export function registerPieceRoutes(app: ExpressApp, requireAuth: RequestHandler
           .status(400)
           .json({ message: "Paramètres invalides", errors: p.error.issues });
       }
-
-      const body = updatePieceSchema.safeParse(req.body);
+     const body = updatePieceSchema.safeParse(req.body);
       if (!body.success) {
         return res
           .status(400)
           .json({ message: "Données invalides", errors: body.error.issues });
+      }
+
+        const patch = body.data as PiecePatch;
+      const nextPatch: PiecePatch = { ...patch };
+
+      if ("galleryId" in patch) {
+        nextPatch.status = patch.galleryId ? "gallery" : "workshop";
       }
 
       const row = await storage.updatePiece(
@@ -169,34 +200,22 @@ export function registerPieceRoutes(app: ExpressApp, requireAuth: RequestHandler
   );
 
   // UPLOAD image
-  app.post(
-    "/api/pieces/:id/image",
-    requireAuth,
-    upload.single("image"),
-    handleAsync(async (req, res) => {
-      const p = idParam.safeParse(req.params);
-      if (!p.success) {
-        return res
-          .status(400)
-          .json({ message: "Paramètres invalides", errors: p.error.issues });
-      }
-      if (!req.file) {
-        return res.status(400).json({ message: "Aucun fichier envoyé" });
-      }
+app.post(
+  "/api/pieces/:id/image",
+  requireAuth,
+  upload.single("image"),
+  handleAsync(async (req, res) => {
+    const p = idParam.safeParse(req.params);
+    if (!p.success) return res.status(400).json({ message: "Paramètres invalides", errors: p.error.issues });
+    if (!req.file) return res.status(400).json({ message: "Aucun fichier envoyé" });
+    const imageUrl = `/uploads/pieces/${req.file.filename}`;
 
-      const baseUrl =
-        process.env.BACKEND_BASE_URL || `${req.protocol}://${req.get("host")}`;
-      const imageUrl = `${baseUrl}/uploads/pieces/${req.file.filename}`;
+    const row = await storage.setPieceImage(req.session.userId!, p.data.id, imageUrl);
+    if (!row) return res.status(404).json({ message: "Pièce introuvable" });
+    return res.json(row);
+  })
+);
 
-      const row = await storage.setPieceImage(
-        req.session.userId!,
-        p.data.id,
-        imageUrl
-      );
-      if (!row) return res.status(404).json({ message: "Pièce introuvable" });
-      return res.json(row);
-    })
-  );
 
   // DELETE image (supprime le fichier si présent)
   app.delete(

@@ -5,6 +5,8 @@ import { PieceTypesStorage } from "./piece-types.storage.js";
 import { StockItemsStorage } from "./stock-items.storage.js";
 import { StockMovementsStorage } from "./stock-movements.storage.js";
 export type { PieceListQuery } from "./storage.base.js";
+import { OrdersStorage } from "./orders.storage.js";
+import { OrderItemsStorage } from "./order-items.storage.js";
 
 
 const users = new UsersStorage();
@@ -13,6 +15,8 @@ const galleries = new GalleriesStorage();
 const pieceTypes = new PieceTypesStorage();
 const stockItems = new StockItemsStorage();
 const stockMovements = new StockMovementsStorage();
+const orders = new OrdersStorage();
+const orderItems = new OrderItemsStorage();
 
 export const storage = {
   // USERS
@@ -66,7 +70,8 @@ export const storage = {
   deletePieceType: (userId: number, id: number) =>
     pieceTypes.deletePieceType(userId, id),
 
-    // STOCK
+
+   //STOCK
 // ITEMS
   createStockItem:  (...a: Parameters<StockItemsStorage["createItem"]>) => stockItems.createItem(...a),
   listStockItems:   (...a: Parameters<StockItemsStorage["listItems"]>) => stockItems.listItems(...a),
@@ -75,16 +80,49 @@ export const storage = {
   deleteStockItem:  (...a: Parameters<StockItemsStorage["deleteItem"]>) => stockItems.deleteItem(...a),
 
   // MOVEMENTS
-  createStockMovement:   (...a: Parameters<StockMovementsStorage["createMovement"]>) => stockMovements.createMovement(...a),
-  listStockMovements:    (...a: Parameters<StockMovementsStorage["listMovements"]>) => stockMovements.listMovements(...a),
-  getStockMovementById:  (...a: Parameters<StockMovementsStorage["getStockMovementById"]>) => stockMovements.getStockMovementById(...a),
-  updateStockMovement:   (...a: Parameters<StockMovementsStorage["updateMovement"]>) => stockMovements.updateMovement(...a),
-  deleteStockMovement:   (...a: Parameters<StockMovementsStorage["deleteMovement"]>) => stockMovements.deleteMovement(...a),
+  createStockMovement:   (...a: Parameters<StockMovementsStorage["createMovement"]>) =>
+     stockMovements.createMovement(...a),
+  listStockMovements:    (...a: Parameters<StockMovementsStorage["listMovements"]>) =>
+     stockMovements.listMovements(...a),
+  getStockMovementById:  (...a: Parameters<StockMovementsStorage["getStockMovementById"]>) => 
+    stockMovements.getStockMovementById(...a),
+  updateStockMovement:   (...a: Parameters<StockMovementsStorage["updateMovement"]>) => 
+    stockMovements.updateMovement(...a),
+  deleteStockMovement:   (...a: Parameters<StockMovementsStorage["deleteMovement"]>) => 
+    stockMovements.deleteMovement(...a),
+
+
+  //  ORDERS 
+  createOrder:       (...a: Parameters<OrdersStorage["createOrder"]>)      =>
+     orders.createOrder(...a),
+  listOrders:        (...a: Parameters<OrdersStorage["listOrders"]>)       => 
+    orders.listOrders(...a),
+  updateOrder:       (...a: Parameters<OrdersStorage["updateOrder"]>)      =>
+     orders.updateOrder(...a),
+  deleteOrder:       (...a: Parameters<OrdersStorage["deleteOrder"]>)      =>
+     orders.deleteOrder(...a),
+  getOrderById:      (...a: Parameters<OrdersStorage["getOrderById"]>)     => 
+    orders.getOrderById(...a),
+  recalcOrderTotal:  (userId: number, orderId: number)                     =>
+     orders.recalcTotal(userId, orderId),
+
+  // ——— ORDER ITEMS ———
+  createOrderItem:   (...a: Parameters<OrderItemsStorage["createItem"]>)   => 
+    orderItems.createItem(...a),
+  listOrderItems:    (...a: Parameters<OrderItemsStorage["listItems"]>)    => 
+    orderItems.listItems(...a),
+  updateOrderItem:   (...a: Parameters<OrderItemsStorage["updateItem"]>)   =>
+     orderItems.updateItem(...a),
+  deleteOrderItem:   (...a: Parameters<OrderItemsStorage["deleteItem"]>)   =>
+     orderItems.deleteItem(...a),
+  getOrderItemById:  (...a: Parameters<OrderItemsStorage["getItemById"]>)  =>
+     orderItems.getItemById(...a),
+
 
 };
 
 
 
 
-export { users, pieces, galleries, pieceTypes, stockItems, stockMovements }; 
+export { users, pieces, galleries, pieceTypes, stockItems, stockMovements, orders, orderItems }; 
 export type AppStorage = typeof storage;

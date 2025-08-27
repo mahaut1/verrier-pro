@@ -13,7 +13,6 @@ import {Form,FormControl, FormField, FormItem, FormLabel, FormMessage,} from "@/
 import {DialogHeader,DialogTitle,} from "@/components/ui/dialog";
 import ImageUpload from "@/components/ui/image-upload";
 import type { Piece } from "@shared/schema";
-import NewPieceTypeForm from "./new_piece_type_form";
 
 
 type PieceWithType = Piece & { pieceType?: { id: number; name: string } | null };
