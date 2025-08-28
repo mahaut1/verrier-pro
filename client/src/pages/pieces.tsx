@@ -268,9 +268,12 @@ const { data: galleries = [] } = useQuery({
                     {piece.imageUrl && (
                       <div className="aspect-w-16 aspect-h-9">
                         <img
+                          key={piece.imageUrl}
                           src={resolveImageUrl(piece.imageUrl)}
                           alt={piece.name}
                           className="w-full h-48 object-cover"
+                          loading="lazy"
+                          onError={() => console.error("Image KO:", piece.imageUrl)}
                         />
                       </div>
                     )}

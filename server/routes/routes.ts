@@ -20,6 +20,8 @@ declare module 'express-session' {
   }
 }
 
+const isProd = process.env.NODE_ENV === "production";
+
 // Middleware d’auth
 function requireAuth(req: Request, res: Response, next: NextFunction) {
   if (!req.session.userId) {
@@ -35,8 +37,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
  
-  const uploadRoot = path.resolve(process.cwd(), 'uploads');
-  app.use('/uploads', express.static(uploadRoot));
+ const uploadRoot = path.resolve(process.cwd(), "uploads");
+  app.use(
+    "/uploads",
+    express.static(uploadRoot, {
+      maxAge: isProd ? "1y" : 0,
+      etag: true,
+      immutable: isProd,
+    })
+  );
+
 
   // Sessions
   app.use(
@@ -69,12 +79,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     app.use('/api', (_req, res) => res.status(404).json({ message: 'Not found' }));
   
   // Handler d'erreurs JSON (dernier middleware)
-  // (utile si une route async lève sans catch)
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    console.error('Unhandled error:', err);
-    if (res.headersSent) return;
-    res.status(500).json({ message: 'Erreur serveur' });
-  });
+ app.use(
+    (err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+      // eslint-disable-next-line no-console
+      console.error("Unhandled error:", err);
+      if (!res.headersSent) {
+        const message =
+          err instanceof Error ? err.message : "Erreur serveur";
+        res.status(500).json({ message });
+      }
+    }
+  );
 
   const httpServer = createServer(app);
   return httpServer;
