@@ -196,7 +196,7 @@ export function registerPieceRoutes(app: ExpressApp, requireAuth: RequestHandler
   );
 
   // UPLOAD image
-  app.post(
+ app.post(
     "/api/pieces/:id/image",
     requireAuth,
     upload.single("image"),
@@ -224,17 +224,10 @@ export function registerPieceRoutes(app: ExpressApp, requireAuth: RequestHandler
         row.imageUrl = await signIfNeeded(row.imageUrl ?? null, 900);
         return res.json(row);
       } catch (err: any) {
-        console.error("[R2 upload error]", {
-          message: err?.message,
-          code: err?.code,
-          errno: err?.errno,
-          syscall: err?.syscall,
-          stack: err?.stack,
-          meta: err?.$metadata,
+        return res.status(500).json({
+          message: "Erreur upload R2",
+          detail: String(err?.message || err),
         });
-        return res
-          .status(500)
-          .json({ message: "Erreur upload R2", detail: String(err?.message || err) });
       }
     })
   );
@@ -256,16 +249,8 @@ export function registerPieceRoutes(app: ExpressApp, requireAuth: RequestHandler
       if (piece.imageUrl && R2_AVAILABLE) {
         try {
           await deleteFromR2ByUrl(piece.imageUrl);
-        } catch (err: any) {
-          console.error("[R2 delete error]", {
-            message: err?.message,
-            code: err?.code,
-            errno: err?.errno,
-            syscall: err?.syscall,
-            stack: err?.stack,
-            meta: err?.$metadata,
-          });
-          // on continue quand même pour nettoyer la DB
+        } catch {
+          // on ignore si déjà supprimé côté R2
         }
       }
 

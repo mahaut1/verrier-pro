@@ -10,6 +10,7 @@ import { registerStockRoutes } from "./routes-stock.js";
 import {registerOrderRoutes} from "./routes-orders.js";
 import {registerOrderItemRoutes} from "./routes-order-items.js"
 import path from 'path';
+import { registerDebugR2Routes } from "./routes-debug-r2.js";
 
 const MemStore = MemoryStore(session);
 
@@ -72,6 +73,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerOrderRoutes(app, requireAuth);
   registerOrderItemRoutes(app, requireAuth);
 
+    registerDebugR2Routes(app);
   // Healthcheck simple
   app.get('/api/health', (_req, res) => res.json({ ok: true }));
   
