@@ -1,4 +1,3 @@
-// server/lib/r2.ts
 import {
   S3Client,
   PutObjectCommand,
@@ -17,45 +16,60 @@ const {
   R2_ACCESS_KEY_ID,
   R2_SECRET_ACCESS_KEY,
   R2_BUCKET,
-  R2_PUBLIC_BASE_URL,              // ex: https://pub-<account>.r2.dev
-  R2_S3_ENDPOINT,                  // ex: https://s3.<account>.r2.cloudflarestorage.com
+  R2_PUBLIC_BASE_URL,   // ex: https://pub-<account>.r2.dev
+  R2_S3_ENDPOINT,       // ex: https://s3.<account>.r2.cloudflarestorage.com (optionnel)
 } = process.env;
 
 tls.DEFAULT_MIN_VERSION = "TLSv1.2";
 
-const S3_HOST = (R2_S3_ENDPOINT
-  ? new URL(R2_S3_ENDPOINT).host
-  : `${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`); // endpoint "API style"
-const S3_ENDPOINT = `https://${S3_HOST}`;
+const S3_ENDPOINT = ((): string => {
+  if (R2_S3_ENDPOINT) return R2_S3_ENDPOINT.replace(/\/+$/, "");
+  if (!R2_ACCOUNT_ID) return "";
+  return `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
+})();
+const S3_HOST = S3_ENDPOINT ? new URL(S3_ENDPOINT).host : "";
 
 export const R2_AVAILABLE = Boolean(
-  R2_ACCOUNT_ID && R2_ACCESS_KEY_ID && R2_SECRET_ACCESS_KEY && R2_BUCKET
+  R2_ACCOUNT_ID && R2_ACCESS_KEY_ID && R2_SECRET_ACCESS_KEY && R2_BUCKET && S3_ENDPOINT
 );
 export const R2_PUBLIC_READ = false;
 
-const lookupV4 = (
-  hostname: string,
-  options: any, // dns.LookupOptions fonctionne aussi
-  callback: (err: NodeJS.ErrnoException | null, address: string, family: number) => void
+type LookupCompat = typeof dns.lookup & { __promisify__?: unknown };
+
+const lookupV4: LookupCompat = ((
+  hostname: any,
+  options?: any,
+  callback?: any
 ) => {
-  dns.lookup(hostname, { family: 4, all: false }, callback as any);
-};
+  let cb = callback;
+  let opts = options;
+  if (typeof opts === "function") {
+    cb = opts;
+    opts = undefined;
+  }
+  dns.lookup(
+    hostname,
+    { ...(opts || {}), family: 4, all: false },
+    cb as (err: NodeJS.ErrnoException | null, address: string, family: number) => void
+  );
+}) as any;
+
+(lookupV4 as any).__promisify__ = (dns.lookup as any).__promisify__;
 
 function buildNodeHandler() {
   const httpsAgent = new https.Agent({
     keepAlive: true,
     minVersion: "TLSv1.2",
     maxVersion: "TLSv1.3",
-    servername: S3_HOST,          
-    lookup: lookupV4,             
-  
+    servername: S3_HOST,  
+    lookup: lookupV4,     
   });
 
   return new NodeHttpHandler({
     httpsAgent,
     requestTimeout: 15_000,
-    http2: false,
-  } as any);
+    ...( { http2: false } as any ), 
+  });
 }
 
 export const r2Client = R2_AVAILABLE
@@ -66,34 +80,27 @@ export const r2Client = R2_AVAILABLE
         accessKeyId: R2_ACCESS_KEY_ID!,
         secretAccessKey: R2_SECRET_ACCESS_KEY!,
       },
-      // Essaie **d’abord** en virtual-hosted style (plus standard chez CF).
-      // S’il y avait un souci, rebasculer à true.
-      forcePathStyle: false,
+      forcePathStyle: false, 
       requestHandler: buildNodeHandler(),
     })
   : null;
 
-// ----- URL publiques (affichage images) -----
 function publicBaseWithBucket(): string {
   const raw = (R2_PUBLIC_BASE_URL || "").replace(/\/+$/, "");
   const bucket = R2_BUCKET!;
   const account = R2_ACCOUNT_ID!;
-
   if (raw) {
     try {
       const u = new URL(raw);
       const host = u.hostname.toLowerCase();
       const path = u.pathname.replace(/\/+$/, "");
       const endsWithBucket = path.split("/").filter(Boolean).pop() === bucket;
-
       if (host.startsWith("pub-") && host.endsWith(".r2.dev")) {
         return endsWithBucket ? raw : `${raw}/${bucket}`;
       }
-      // domaine custom => déjà mappé
       return raw;
-    } catch { /* ignore */ }
+    } catch {}
   }
-  // fallback API-style (inclut /<bucket>)
   return `https://${account}.r2.cloudflarestorage.com/${bucket}`;
 }
 
@@ -117,7 +124,6 @@ function keyFromUrl(publicUrl: string): string {
   }
 }
 
-// ----- Opérations S3 -----
 export async function uploadToR2(
   key: string,
   buf: Buffer,
@@ -125,7 +131,6 @@ export async function uploadToR2(
 ): Promise<string> {
   if (!R2_AVAILABLE || !r2Client) throw new Error("R2 non configuré");
   const safeType = contentType?.startsWith("image/") ? contentType : "image/jpeg";
-
   await r2Client.send(new PutObjectCommand({
     Bucket: R2_BUCKET!,
     Key: key,
@@ -163,8 +168,4 @@ export async function signIfNeeded(
   return getSignedReadUrlFromPublicUrl(publicUrl, ttlSeconds);
 }
 
-// Exposer quelques infos pour le debug-route
-export const __R2_INTERNAL__ = {
-  S3_ENDPOINT,
-  S3_HOST,
-};
+export const __R2_INTERNAL__ = { S3_ENDPOINT, S3_HOST };
