@@ -47,14 +47,15 @@ function s3Endpoint(): URL {
 
 function buildNodeHandler() {
   const endpoint = s3Endpoint();
-  const httpsAgent = new https.Agent({
-    keepAlive: true,
-    minVersion: "TLSv1.2",
-    maxVersion: "TLSv1.3",
-    servername: endpoint.hostname,             // SNI match
-    ALPNProtocols: ["http/1.1"],               // don’t try h2
-    lookup: (host, _opts, cb) => dns.lookup(host, { family: 4 }, cb as any),
-  });
+const httpsAgent = new https.Agent({
+  keepAlive: false,
+  minVersion: "TLSv1.2",
+  maxVersion: "TLSv1.3",
+  servername: endpoint.hostname,
+  ALPNProtocols: ["http/1.1"],
+  lookup: (host, _opts, cb) => dns.lookup(host, { family: 4 }, cb as any),
+});
+
 
   return new NodeHttpHandler({ httpsAgent, ...( { http2: false } as any ) });
 }
