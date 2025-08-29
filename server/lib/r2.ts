@@ -1,4 +1,3 @@
-// server/lib/r2.ts
 import {
   S3Client,
   PutObjectCommand,
@@ -10,46 +9,63 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { NodeHttpHandler } from "@smithy/node-http-handler";
 import https from "https";
 import tls from "tls";
+import dns from "dns";
 
-// ===== ENV =====
 const {
   R2_ACCOUNT_ID,
   R2_ACCESS_KEY_ID,
   R2_SECRET_ACCESS_KEY,
   R2_BUCKET,
-  R2_PUBLIC_BASE_URL,              // ex: https://pub-<account>.r2.dev  (ou domaine custom)
+  R2_PUBLIC_BASE_URL,
+  R2_S3_ENDPOINT,         
+  FORCE_IPV4,             
 } = process.env;
 
-// Toujours forcer TLS >= 1.2 (certaines stacks sinon négocient bas et CF refuse)
 tls.DEFAULT_MIN_VERSION = "TLSv1.2";
 
-// R2 dispo ?
+// Is R2 usable?
 export const R2_AVAILABLE = Boolean(
   R2_ACCOUNT_ID && R2_ACCESS_KEY_ID && R2_SECRET_ACCESS_KEY && R2_BUCKET
 );
 
-// Ton bucket est privé → on garde false (sinon mets true si tu ouvres en public)
+// Keep false if bucket is private
 export const R2_PUBLIC_READ = false;
 
-// Handler HTTP: forcer HTTP/1.1 et TLS 1.2+, fixer SNI (servername)
+// Build endpoint (prefer the explicit S3 endpoint)
+const ENDPOINT =
+  (R2_S3_ENDPOINT && R2_S3_ENDPOINT.replace(/\/+$/, "")) ||
+  `https://s3.${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
+
+// Node HTTP handler tuned for Cloudflare
 function buildNodeHandler() {
+  // Optional: force IPv4 to dodge flaky IPv6 routes
+  const lookup =
+    FORCE_IPV4 === "1"
+      ? (hostname: string, _opts: any, cb: any) =>
+          dns.lookup(hostname, { family: 4 }, cb)
+      : undefined;
+
   const httpsAgent = new https.Agent({
     keepAlive: true,
     minVersion: "TLSv1.2",
     maxVersion: "TLSv1.3",
-    // SNI explicite (important selon environnements)
-    servername: `${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+    // Offer both h2 and http/1.1 via ALPN – CF will pick.
+    ALPNProtocols: ["h2", "http/1.1"],
+    // SNI is automatic from the URL host; no need to override servername.
   });
 
-  // http2:false n’est pas typé partout → cast en any
-  return new NodeHttpHandler({ httpsAgent, ...( { http2: false } as any ) });
+  return new NodeHttpHandler({
+    httpsAgent,
+    connectionTimeout: 10_000,
+    requestTimeout: 30_000,
+    ...(lookup ? ({ lookup } as any) : {}),
+  });
 }
 
-// Client S3 → R2
 export const r2Client = R2_AVAILABLE
   ? new S3Client({
       region: "auto",
-      endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+      endpoint: ENDPOINT,
       credentials: {
         accessKeyId: R2_ACCESS_KEY_ID!,
         secretAccessKey: R2_SECRET_ACCESS_KEY!,
@@ -59,25 +75,23 @@ export const r2Client = R2_AVAILABLE
     })
   : null;
 
-// ===== URL helpers =====
 function publicBaseWithBucket(): string {
   const raw = (R2_PUBLIC_BASE_URL || "").replace(/\/+$/, "");
   const bucket = R2_BUCKET!;
   const account = R2_ACCOUNT_ID!;
-
   if (raw) {
     try {
       const u = new URL(raw);
       const host = u.hostname.toLowerCase();
       const path = u.pathname.replace(/\/+$/, "");
       const endsWithBucket = path.split("/").filter(Boolean).pop() === bucket;
-
       if (host.startsWith("pub-") && host.endsWith(".r2.dev")) {
         return endsWithBucket ? raw : `${raw}/${bucket}`;
       }
-      // Domaine custom → on suppose déjà mappé au bucket
       return raw;
-    } catch {}
+    } catch {
+      /* fall through */
+    }
   }
   return `https://${account}.r2.cloudflarestorage.com/${bucket}`;
 }
@@ -102,7 +116,7 @@ function keyFromUrl(publicUrl: string): string {
   }
 }
 
-// ===== Ops =====
+// ----- Ops -----
 export async function uploadToR2(
   key: string,
   buf: Buffer,
@@ -110,7 +124,6 @@ export async function uploadToR2(
 ): Promise<string> {
   if (!R2_AVAILABLE || !r2Client) throw new Error("R2 non configuré");
   const safeType = contentType?.startsWith("image/") ? contentType : "image/jpeg";
-
   await r2Client.send(
     new PutObjectCommand({
       Bucket: R2_BUCKET!,
