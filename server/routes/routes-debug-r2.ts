@@ -1,5 +1,5 @@
 import type { Express, Request, Response } from "express";
-import { r2Client } from "../lib/r2";  
+import { r2Client } from "../lib/r2.js";
 import { HeadBucketCommand } from "@aws-sdk/client-s3";
 
 export function registerDebugR2Routes(app: Express) {
