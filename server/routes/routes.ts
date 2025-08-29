@@ -73,7 +73,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerOrderRoutes(app, requireAuth);
   registerOrderItemRoutes(app, requireAuth);
 
-  registerDebugR2Routes(app, requireAuth);  
+  registerDebugR2Routes(app);  
   app.get('/api/health', (_req, res) => res.json({ ok: true }));
   
   //  Garde anti-fallback SPA pour /api/*
