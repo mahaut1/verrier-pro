@@ -2,6 +2,8 @@ import express, { type Express, type Request, type Response, type NextFunction }
 import { createServer, type Server } from 'http';
 import session from 'express-session';
 import MemoryStore from 'memorystore';
+import path from 'path';
+
 import { registerAuthRoutes } from './routes-auth.js';
 import { registerGalleryRoutes } from './routes-galleries.js';
 import { registerPieceRoutes } from './routes-pieces.js';
@@ -9,8 +11,8 @@ import { registerPieceTypeRoutes } from './routes-piece-types.js';
 import { registerStockRoutes } from "./routes-stock.js";
 import {registerOrderRoutes} from "./routes-orders.js";
 import {registerOrderItemRoutes} from "./routes-order-items.js"
-import path from 'path';
 import { registerDebugR2Routes } from "./routes-debug-r2.js";
+import { registerR2DirectUploadRoutes } from './routes-r2-direct-upload.js';
 
 const MemStore = MemoryStore(session);
 
@@ -74,6 +76,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerOrderItemRoutes(app, requireAuth);
 
   registerDebugR2Routes(app);  
+  registerR2DirectUploadRoutes(app);
+
   app.get('/api/health', (_req, res) => res.json({ ok: true }));
   
   //  Garde anti-fallback SPA pour /api/*

@@ -1,165 +1,114 @@
-import { useEffect, useRef, useState } from "react";
+import * as React from "react";
 import { Button } from "@/components/ui/button";
 
 type Props = {
   pieceId: number;
   currentImageUrl?: string;
-  onImageUploaded?: (imageUrl: string) => void;
+  onImageUploaded?: (imageUrl: string | null) => void;
   disabled?: boolean;
-  /** Taille max (bytes) – défaut 10 Mo */
-  maxSize?: number;
 };
 
 export default function ImageUpload({
   pieceId,
   currentImageUrl,
   onImageUploaded,
-  disabled = false,
-  maxSize = 10 * 1024 * 1024,
+  disabled,
 }: Props) {
-  const inputRef = useRef<HTMLInputElement | null>(null);
-  const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
+  const [file, setFile] = React.useState<File | null>(null);
+  const [isSending, setIsSending] = React.useState(false);
+  const inputRef = React.useRef<HTMLInputElement | null>(null);
 
-  // initialise l’aperçu avec l’image actuelle si fournie
-  useEffect(() => {
-    setPreview(currentImageUrl ?? null);
-  }, [currentImageUrl]);
-
-  const uploadUrl = `/api/pieces/${pieceId}/image`;
-
-  function onPickClick() {
-    inputRef.current?.click();
-  }
-
-  function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setError(null);
-    const f = e.target.files?.[0] || null;
-    if (!f) return;
-
-    if (!["image/jpeg", "image/png", "image/webp"].includes(f.type)) {
-      setError("Formats acceptés: JPEG, PNG, WEBP.");
-      return;
-    }
-    if (f.size > maxSize) {
-      setError(`Fichier trop lourd (max ${(maxSize / (1024 * 1024)).toFixed(0)} Mo).`);
-      return;
-    }
-
-    setFile(f);
-    setPreview(URL.createObjectURL(f));
-  }
-
-  async function onUpload() {
+  async function handleUpload() {
     if (!file) return;
-    setError(null);
-    setUploading(true);
+    setIsSending(true);
     try {
       const fd = new FormData();
-      fd.append("image", file);
+      // IMPORTANT: doit s'appeler "image" pour matcher `upload.single("image")`
+      fd.append("image", file, file.name);
 
-      const res = await fetch(uploadUrl, {
+      const res = await fetch(`/api/pieces/${pieceId}/image`, {
         method: "POST",
         body: fd,
-        credentials: "include",
+        credentials: "include", // conserve le cookie de session
       });
 
-      const ct = res.headers.get("content-type") || "";
-      if (!ct.includes("application/json")) {
-        const text = await res.text();
-        throw new Error(`Réponse non JSON (${res.status}) — ${text.slice(0, 120)}`);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || `Upload failed (${res.status})`);
       }
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.message || `HTTP ${res.status}`);
-
-      const url = data.imageUrl || data?.piece?.imageUrl;
-      if (url) {
-        setPreview(url);
-        onImageUploaded?.(url);
-      }
+      const row = await res.json(); // ta route renvoie la pièce mise à jour
+      onImageUploaded?.(row.imageUrl ?? null);
+      setFile(null);
+      if (inputRef.current) inputRef.current.value = "";
     } catch (e: any) {
-      setError(e.message || "Échec de l’upload");
+      alert(e?.message || "Échec de l’upload");
     } finally {
-      setUploading(false);
-      // on laisse le fichier sélectionné pour permettre un ré-envoi rapide,
-      // à toi de décider si tu veux « reset » ici.
+      setIsSending(false);
     }
   }
 
-  function onClearSelection() {
-    setFile(null);
-    if (inputRef.current) inputRef.current.value = "";
-    // on garde `preview` (l’image en base) si aucun nouveau fichier choisi
-    if (!currentImageUrl) setPreview(null);
+  async function handleDelete() {
+    setIsSending(true);
+    try {
+      const res = await fetch(`/api/pieces/${pieceId}/image`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || `Delete failed (${res.status})`);
+      }
+      const row = await res.json();
+      onImageUploaded?.(row.imageUrl ?? null);
+      setFile(null);
+      if (inputRef.current) inputRef.current.value = "";
+    } catch (e: any) {
+      alert(e?.message || "Échec de la suppression");
+    } finally {
+      setIsSending(false);
+    }
   }
 
   return (
     <div className="space-y-3">
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/jpeg,image/png,image/webp"
-        className="hidden"
-        onChange={onFileChange}
-        disabled={disabled || uploading}
-      />
-
-      <div className="border border-input rounded-md p-4">
-        <div className="flex items-start gap-4">
-          {preview ? (
-            <img
-              src={preview}
-              alt="preview"
-              className="w-40 h-40 object-cover rounded-md border"
-            />
-          ) : (
-            <div className="w-40 h-40 rounded-md border flex items-center justify-center text-xs text-gray-600">
-              Aucune image
-            </div>
-          )}
-
-          <div className="flex-1">
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                onClick={onPickClick}
-                variant="outline"
-                disabled={disabled || uploading}
-              >
-                Choisir un fichier
-              </Button>
-              <Button
-                type="button"
-                onClick={onUpload}
-                disabled={disabled || uploading || !file}
-              >
-                {uploading ? "Envoi..." : "Envoyer"}
-              </Button>
-              {file && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={onClearSelection}
-                  disabled={disabled || uploading}
-                >
-                  Annuler sélection
-                </Button>
-              )}
-            </div>
-
-            {file && (
-              <p className="text-xs text-gray-600 mt-2">
-                {file.name} • {(file.size / 1024).toFixed(0)} Ko
-              </p>
-            )}
-
-            {error && <p className="text-sm text-red-600 mt-2">{error}</p>}
-          </div>
-        </div>
+      <div className="flex items-center gap-3">
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/*"
+          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+          disabled={disabled || isSending}
+        />
+        <Button
+          type="button"
+          onClick={handleUpload}
+          disabled={!file || disabled || isSending}
+        >
+          {isSending ? "Téléversement…" : "Téléverser l’image"}
+        </Button>
+        {currentImageUrl ? (
+          <Button
+            type="button"
+            variant="destructive"
+            onClick={handleDelete}
+            disabled={disabled || isSending}
+          >
+            Supprimer
+          </Button>
+        ) : null}
       </div>
+
+      {currentImageUrl ? (
+        <div className="rounded border p-2">
+          <div className="text-sm mb-1">Aperçu</div>
+          <img
+            src={currentImageUrl}
+            alt="aperçu"
+            className="max-h-48 object-contain"
+          />
+        </div>
+      ) : null}
     </div>
   );
 }

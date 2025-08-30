@@ -5,6 +5,7 @@ import type {
   NextFunction,
   RequestHandler,
 } from "express";
+import { randomUUID } from "crypto";
 import { z } from "zod";
 import multer from "multer";
 import type { FileFilterCallback } from "multer";
@@ -33,6 +34,7 @@ function handleAsync(
 }
 
 
+
 // Multer (3MB, jpg/png/webp)
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -43,9 +45,14 @@ const upload = multer({
   },
 });
 
-// petit util pour un nom de clé propre
-function sanitize(name: string) {
-  return name.replace(/\s+/g, "_").replace(/[^a-zA-Z0-9._-]/g, "");
+// Nettoyage simple de nom de fichier (évite d’ajouter une dépendance)
+function sanitizeFilename(name: string): string {
+  return name
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")     // accents
+    .replace(/\s+/g, "_")                // espaces -> _
+    .replace(/[^a-zA-Z0-9._-]/g, "")     // caractères sûrs
+    .slice(0, 150);                      // borne raisonnable
 }
 
 // Schéma de query pour LIST
@@ -196,68 +203,69 @@ export function registerPieceRoutes(app: ExpressApp, requireAuth: RequestHandler
   );
 
   // UPLOAD image
- app.post(
-    "/api/pieces/:id/image",
-    requireAuth,
-    upload.single("image"),
-    handleAsync(async (req, res) => {
-      const p = idParam.safeParse(req.params);
-      if (!p.success) {
-        return res.status(400).json({ message: "Paramètres invalides", errors: p.error.issues });
-      }
-      if (!req.file) {
-        return res.status(400).json({ message: "Aucun fichier envoyé" });
-      }
-      if (!R2_AVAILABLE) {
-        return res.status(500).json({ message: "Stockage R2 non configuré" });
-      }
+app.post(
+  "/api/pieces/:id/image",
+  requireAuth,
+  upload.single("image"),
+  async (req, res) => {
+    const parsed = idParam.safeParse(req.params);
+    if (!parsed.success) {
+      return res.status(400).json({ message: "Paramètres invalides", errors: parsed.error.issues });
+    }
+    if (!req.file) {
+      return res.status(400).json({ message: "Aucun fichier envoyé" });
+    }
+    if (!R2_AVAILABLE) {
+      return res.status(500).json({ message: "Stockage R2 non configuré" });
+    }
 
+    try {
       const userId = req.session.userId!;
-      const pieceId = p.data.id;
-      const filename = `${pieceId}-${Date.now()}-${sanitize(req.file.originalname)}`;
-      const key = `pieces/${userId}/${filename}`;
+      const pieceId = parsed.data.id;
+      const original = sanitizeFilename(req.file.originalname || "image");
+      const ext = original.includes(".") ? original.slice(original.lastIndexOf(".")) : "";
+      const key = `pieces/${userId}/${pieceId}-${Date.now()}-${randomUUID()}${ext}`;
+      const publicUrl = await uploadToR2(key, req.file.buffer, req.file.mimetype);
+      const updated = await storage.setPieceImage(userId, pieceId, publicUrl);
+      if (!updated) return res.status(404).json({ message: "Pièce introuvable" });
+      updated.imageUrl = await signIfNeeded(updated.imageUrl ?? null, 900);
 
-      try {
-        const publicUrl = await uploadToR2(key, req.file.buffer, req.file.mimetype);
-        const row = await storage.setPieceImage(userId, pieceId, publicUrl);
-        if (!row) return res.status(404).json({ message: "Pièce introuvable" });
-        row.imageUrl = await signIfNeeded(row.imageUrl ?? null, 900);
-        return res.json(row);
-      } catch (err: any) {
-        return res.status(500).json({
-          message: "Erreur upload R2",
-          detail: String(err?.message || err),
-        });
-      }
-    })
-  );
+      return res.json(updated);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return res.status(500).json({ message: "Erreur upload R2", detail: message });
+    }
+  }
+);
 
   // DELETE image
-  app.delete(
-    "/api/pieces/:id/image",
-    requireAuth,
-    handleAsync(async (req, res) => {
-      const p = idParam.safeParse(req.params);
-      if (!p.success) {
-        return res.status(400).json({ message: "Paramètres invalides", errors: p.error.issues });
+app.delete(
+  "/api/pieces/:id/image",
+  requireAuth,
+  async (req, res) => {
+    const parsed = idParam.safeParse(req.params);
+    if (!parsed.success) {
+      return res.status(400).json({ message: "Paramètres invalides", errors: parsed.error.issues });
+    }
+    const userId = req.session.userId!;
+    const pieceId = parsed.data.id;
+    const piece = await storage.getPieceById(userId, pieceId);
+    if (!piece) return res.status(404).json({ message: "Pièce introuvable" });
+    if (piece.imageUrl && R2_AVAILABLE) {
+      try {
+        await deleteFromR2ByUrl(piece.imageUrl);
+      } catch {
       }
+    }
 
-      const userId = req.session.userId!;
-      const piece = await storage.getPieceById(userId, p.data.id);
-      if (!piece) return res.status(404).json({ message: "Pièce introuvable" });
+    const updated = await storage.clearPieceImage(userId, pieceId);
+    if (!updated) return res.status(404).json({ message: "Pièce introuvable" });
 
-      if (piece.imageUrl && R2_AVAILABLE) {
-        try {
-          await deleteFromR2ByUrl(piece.imageUrl);
-        } catch {
-          // on ignore si déjà supprimé côté R2
-        }
-      }
+    updated.imageUrl = null;
+    return res.json(updated);
+  }
+);
 
-      const row = await storage.clearPieceImage(userId, p.data.id);
-      if (!row) return res.status(404).json({ message: "Pièce introuvable" });
-      row.imageUrl = null;
-      return res.json(row);
-    })
-  );
 }
+
+
