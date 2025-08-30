@@ -1,5 +1,7 @@
 import * as React from "react";
 import { Button } from "@/components/ui/button";
+import { resolveImageUrl } from "../../lib/images";
+
 
 type Props = {
   pieceId: number;
@@ -16,33 +18,40 @@ export default function ImageUpload({
 }: Props) {
   const [file, setFile] = React.useState<File | null>(null);
   const [isSending, setIsSending] = React.useState(false);
-  const inputRef = React.useRef<HTMLInputElement | null>(null);
+  const inputId = React.useId();
+
+  const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
+  React.useEffect(() => {
+    if (!file) {
+      setPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
 
   async function handleUpload() {
     if (!file) return;
     setIsSending(true);
     try {
       const fd = new FormData();
-      // IMPORTANT: doit s'appeler "image" pour matcher `upload.single("image")`
-      fd.append("image", file, file.name);
+      fd.append("image", file, file.name); // doit s’appeler "image"
 
       const res = await fetch(`/api/pieces/${pieceId}/image`, {
         method: "POST",
         body: fd,
-        credentials: "include", // conserve le cookie de session
+        credentials: "include",
       });
-
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.message || `Upload failed (${res.status})`);
       }
-
-      const row = await res.json(); // ta route renvoie la pièce mise à jour
+      const row = await res.json();
       onImageUploaded?.(row.imageUrl ?? null);
       setFile(null);
-      if (inputRef.current) inputRef.current.value = "";
     } catch (e: any) {
-      alert(e?.message || "Échec de l’upload");
+      alert(e?.message || "Échec du téléversement");
     } finally {
       setIsSending(false);
     }
@@ -62,7 +71,6 @@ export default function ImageUpload({
       const row = await res.json();
       onImageUploaded?.(row.imageUrl ?? null);
       setFile(null);
-      if (inputRef.current) inputRef.current.value = "";
     } catch (e: any) {
       alert(e?.message || "Échec de la suppression");
     } finally {
@@ -70,23 +78,37 @@ export default function ImageUpload({
     }
   }
 
-  return (
+
+   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-3">
+      <div className="grid items-center gap-3 md:grid-cols-[auto,1fr,auto,auto] grid-cols-1">
         <input
-          ref={inputRef}
+          id={inputId}
           type="file"
           accept="image/*"
+          className="sr-only"
           onChange={(e) => setFile(e.target.files?.[0] ?? null)}
           disabled={disabled || isSending}
         />
+
+        <label htmlFor={inputId}>
+          <Button type="button" variant="outline" disabled={disabled || isSending}>
+            Choisir un fichier
+          </Button>
+        </label>
+
+        <div className="min-w-0 truncate text-sm text-muted-foreground">
+          {file ? file.name : "Aucun fichier sélectionné"}
+        </div>
+
         <Button
           type="button"
           onClick={handleUpload}
           disabled={!file || disabled || isSending}
         >
-          {isSending ? "Téléversement…" : "Téléverser l’image"}
+          {isSending ? "Téléversement…" : "Téléverser"}
         </Button>
+
         {currentImageUrl ? (
           <Button
             type="button"
@@ -99,16 +121,16 @@ export default function ImageUpload({
         ) : null}
       </div>
 
-      {currentImageUrl ? (
+      {(previewUrl || currentImageUrl) && (
         <div className="rounded border p-2">
-          <div className="text-sm mb-1">Aperçu</div>
+          <div className="mb-1 text-sm text-muted-foreground">Aperçu</div>
           <img
-            src={currentImageUrl}
+            src={previewUrl ?? resolveImageUrl(currentImageUrl!)}
             alt="aperçu"
-            className="max-h-48 object-contain"
+            className="aspect-[4/3] w-full rounded-md object-cover"
           />
         </div>
-      ) : null}
+      )}
     </div>
   );
 }

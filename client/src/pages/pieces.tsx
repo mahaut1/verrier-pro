@@ -345,8 +345,8 @@ const { data: galleries = [] } = useQuery({
         {/* Dialog d'édition */}
         {editPiece && (
           <Dialog open={!!editPiece} onOpenChange={() => setEditPiece(null)}>
-            <DialogContent className="max-w-2xl">
-              <PieceEditForm
+          <DialogContent className="max-w-3xl p-0">
+                <PieceEditForm
                 piece={editPiece}
                 onSuccess={() => setEditPiece(null)}
               />

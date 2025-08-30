@@ -60,7 +60,8 @@ export default function PieceEditForm({ piece, onSuccess }: PieceEditFormProps) 
     defaultValues: {
       name: piece.name,
       uniqueId: piece.uniqueId,
-      pieceTypeId: piece.pieceType?.id ?? (piece as any).pieceTypeId ?? null,      dimensions: piece.dimensions || "",
+      pieceTypeId: piece.pieceType?.id ?? (piece as any).pieceTypeId ?? null,   
+      dimensions: piece.dimensions || "",
       dominantColor: piece.dominantColor || "",
       description: piece.description || "",
       status: piece.status,
@@ -103,233 +104,228 @@ export default function PieceEditForm({ piece, onSuccess }: PieceEditFormProps) 
   };
 
   return (
-    <>
-      <DialogHeader>
+    <div className="flex max-h-[85vh] flex-col overflow-hidden">
+      <DialogHeader className="sticky top-0 z-10 border-b bg-white/80 px-6 py-4 backdrop-blur supports-[backdrop-filter]:bg-white/60">
         <DialogTitle>Modifier la pièce</DialogTitle>
       </DialogHeader>
+
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          <FormField
-            control={form.control}
-            name="name"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Nom de la pièce</FormLabel>
-                <FormControl>
-                  <Input placeholder="Vase bleu cobalt" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="uniqueId"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Identifiant unique</FormLabel>
-                <FormControl>
-                  <Input placeholder="VCB-001" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-     <div className="grid grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="pieceTypeId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Type</FormLabel>
-                  <Select
-                    onValueChange={(val) => field.onChange(val === "none" ? null : Number(val))}
-                    defaultValue={field.value == null ? "none" : String(field.value)}
-                  >
+        <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 overflow-y-auto overflow-x-hidden px-6 py-5">
+          <div className="grid gap-6 md:grid-cols-2">
+            {/* Colonne gauche */}
+            <div className="space-y-4">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nom de la pièce</FormLabel>
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sélectionner le type" />
-                      </SelectTrigger>
+                      <Input autoFocus placeholder="Vase bleu cobalt" {...field} />
                     </FormControl>
-                    <SelectContent>
-                      <SelectItem value="none">Aucun type</SelectItem>
-                      {pieceTypes.map((t: any) => (
-                        <SelectItem key={t.id} value={String(t.id)}>
-                          {t.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <FormField
-              control={form.control}
-              name="dominantColor"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Couleur dominante</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Bleu cobalt" {...field} value={field.value ?? ""} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+              <FormField
+                control={form.control}
+                name="uniqueId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Identifiant unique</FormLabel>
+                    <FormControl>
+                      <Input placeholder="VCB-001" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="pieceTypeId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Type</FormLabel>
+                      <Select
+                        onValueChange={(val) => field.onChange(val === "none" ? null : Number(val))}
+                        defaultValue={field.value == null ? "none" : String(field.value)}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Sélectionner le type" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="none">Aucun type</SelectItem>
+                          {pieceTypes.map((t) => (
+                            <SelectItem key={t.id} value={String(t.id)}>
+                              {t.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="dominantColor"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Couleur dominante</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Bleu cobalt" {...field} value={field.value ?? ""} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={form.control}
+                name="dimensions"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Dimensions</FormLabel>
+                    <FormControl>
+                      <Input placeholder="H: 25cm, Ø: 15cm" {...field} value={field.value ?? ""} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="status"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Statut</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="workshop">Atelier</SelectItem>
+                          <SelectItem value="transit">En transit</SelectItem>
+                          <SelectItem value="gallery">En galerie</SelectItem>
+                          <SelectItem value="sold">Vendue</SelectItem>
+                          <SelectItem value="completed">Terminée</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="price"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Prix (€)</FormLabel>
+                      <FormControl>
+                        <Input type="number" step="0.01" placeholder="150.00" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={form.control}
+                name="currentLocation"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Localisation actuelle</FormLabel>
+                    <FormControl>
+                      <Input placeholder="atelier" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="galleryId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Galerie (optionnel)</FormLabel>
+                    <Select
+                      onValueChange={(value) => field.onChange(value === "none" ? null : parseInt(value))}
+                      defaultValue={field.value?.toString() || "none"}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Sélectionner une galerie" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="none">Aucune galerie</SelectItem>
+                        {galleries.map((g: any) => (
+                          <SelectItem key={g.id} value={g.id.toString()}>
+                            {g.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description</FormLabel>
+                    <FormControl>
+                      <Textarea placeholder="Description détaillée de la pièce..." {...field} value={field.value ?? ""} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="space-y-4">
+              <ImageUpload
+                pieceId={piece.id}
+                currentImageUrl={piece.imageUrl || undefined}
+                onImageUploaded={(imageUrl) => {
+                  queryClient.setQueryData(["/api/pieces", piece.id], (old: any) => ({ ...old, imageUrl }));
+                  queryClient.invalidateQueries({ queryKey: ["/api/pieces"] });
+                  toast({ title: "Succès", description: "Image mise à jour avec succès" });
+                }}
+                disabled={updatePieceMutation.isPending}
+              />
+            </div>
           </div>
 
-          <FormField
-            control={form.control}
-            name="dimensions"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Dimensions</FormLabel>
-                <FormControl>
-                  <Input placeholder="H: 25cm, Ø: 15cm" {...field} value={field.value ?? ""} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <div className="grid grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="status"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Statut</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="workshop">Atelier</SelectItem>
-                      <SelectItem value="transit">En transit</SelectItem>
-                      <SelectItem value="gallery">En galerie</SelectItem>
-                      <SelectItem value="sold">Vendue</SelectItem>
-                      <SelectItem value="completed">Terminée</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="price"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Prix (€)</FormLabel>
-                  <FormControl>
-                    <Input type="number" step="0.01" placeholder="150.00" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-
-          <FormField
-            control={form.control}
-            name="currentLocation"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Localisation actuelle</FormLabel>
-                <FormControl>
-                  <Input placeholder="atelier" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="galleryId"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Galerie (optionnel)</FormLabel>
-                <Select onValueChange={(value) => field.onChange(value === "none" ? null : parseInt(value))} defaultValue={field.value?.toString() || "none"}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner une galerie" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="none">Aucune galerie</SelectItem>
-                    {(Array.isArray(galleries) ? galleries : []).map((gallery: any) => (
-                      <SelectItem key={gallery.id} value={gallery.id.toString()}>
-                        {gallery.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="description"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Description</FormLabel>
-                <FormControl>
-                  <Textarea
-                    placeholder="Description détaillée de la pièce..."
-                    {...field}
-                    value={field.value ?? ""}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          {/* Composant d'upload d'images */}
-          <ImageUpload
-            pieceId={piece.id}
-            currentImageUrl={piece.imageUrl || undefined}
-            onImageUploaded={(imageUrl) => {
-              // Mettre à jour le cache de la pièce avec la nouvelle image
-              queryClient.setQueryData(["/api/pieces", piece.id], (oldData: any) => ({
-                ...oldData,
-                imageUrl
-              }));
-              // Invalider le cache pour rafraîchir les listes
-              queryClient.invalidateQueries({ queryKey: ["/api/pieces"] });
-              
-              toast({
-                title: "Succès",
-                description: "Image mise à jour avec succès",
-              });
-            }}
-            disabled={updatePieceMutation.isPending}
-          />
-
-          <div className="flex justify-end space-x-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onSuccess?.()}
-            >
-              Annuler
-            </Button>
-            <Button type="submit" disabled={updatePieceMutation.isPending}>
-              {updatePieceMutation.isPending ? "Modification..." : "Modifier la pièce"}
-            </Button>
+          <div className="sticky bottom-0 mt-6 border-t bg-white/80 px-6 py-3 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => onSuccess?.()}>
+                Annuler
+              </Button>
+              <Button type="submit" disabled={updatePieceMutation.isPending}>
+                {updatePieceMutation.isPending ? "Modification..." : "Modifier la pièce"}
+              </Button>
+            </div>
           </div>
         </form>
       </Form>
-    </>
+    </div>
   );
 }

@@ -19,7 +19,8 @@
      "@/*": ["./*"],
       "@shared/*": ["./shared/*"],
       "@assets/*": ["./attached_assets/*"]
-    }
+    },
+    "types": ["vite/client"]    
   },
   "include": [
     "client/src",

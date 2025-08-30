@@ -11,8 +11,7 @@ import { registerPieceTypeRoutes } from './routes-piece-types.js';
 import { registerStockRoutes } from "./routes-stock.js";
 import {registerOrderRoutes} from "./routes-orders.js";
 import {registerOrderItemRoutes} from "./routes-order-items.js"
-import { registerDebugR2Routes } from "./routes-debug-r2.js";
-import { registerR2DirectUploadRoutes } from './routes-r2-direct-upload.js';
+import { registerR2ProxyRoutes } from './routes-r2-proxy.js';
 
 const MemStore = MemoryStore(session);
 
@@ -74,9 +73,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerStockRoutes(app, requireAuth);
   registerOrderRoutes(app, requireAuth);
   registerOrderItemRoutes(app, requireAuth);
-
-  registerDebugR2Routes(app);  
-  registerR2DirectUploadRoutes(app);
+  registerR2ProxyRoutes(app, requireAuth);
 
   app.get('/api/health', (_req, res) => res.json({ ok: true }));
   

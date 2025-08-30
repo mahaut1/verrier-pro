@@ -13,7 +13,7 @@ import { storage } from "../storage/index.js";
 import { insertPieceSchema } from "../../shared/schema.js";
 import type * as sch from "../../shared/schema.js";
 import type { PieceListQuery } from "../storage/index.js";
-import { R2_AVAILABLE,uploadToR2, deleteFromR2ByUrl, signIfNeeded } from "../lib/r2.js";
+import { R2_AVAILABLE,r2PutObject, r2DeleteObject, keyFromPublicUrl  } from "../lib/r2.js";
 
 //  types locaux 
 type PieceInsert = typeof sch.pieces.$inferInsert;
@@ -57,7 +57,7 @@ function sanitizeFilename(name: string): string {
 
 // Schéma de query pour LIST
 const listQuerySchema = z.object({
-  status: z.string().trim().min(1).optional(),                // ex: 'workshop', 'gallery', 'sold', ...
+  status: z.string().trim().min(1).optional(),                
   pieceTypeId: z.coerce.number().int().positive().optional(),
   galleryId: z.coerce.number().int().positive().optional(),
   // filtre d’éligibilité pour une commande
@@ -81,7 +81,6 @@ export function registerPieceRoutes(app: ExpressApp, requireAuth: RequestHandler
           .json({ message: "Données invalides", errors: v.error.issues });
       }
       const row = await storage.createPiece(req.session.userId!, v.data);
-       row.imageUrl = await signIfNeeded(row.imageUrl ?? null, 900);
       return res.status(201).json(row);
     })
   );
@@ -98,14 +97,9 @@ export function registerPieceRoutes(app: ExpressApp, requireAuth: RequestHandler
           .json({ message: "Paramètres invalides", errors: parsed.error.issues });
       }
       const { status, pieceTypeId, galleryId, availableForOrder, orderId } = parsed.data;
-      const filters: PieceListQuery = {
-        status,
-        pieceTypeId,
-        galleryId,
-      };
+      const filters: PieceListQuery = {status,pieceTypeId,galleryId,};
       let rows = await storage.listPieces(req.session.userId!, filters);
       if (availableForOrder) {
-        // Récupère la galerie cible depuis l'order si fourni
         let targetGalleryId: number | undefined;
         if (orderId) {
           const order = await storage.getOrderById(req.session.userId!, orderId);
@@ -123,7 +117,6 @@ export function registerPieceRoutes(app: ExpressApp, requireAuth: RequestHandler
         const withSigned = await Promise.all(
         rows.map(async (p) => ({
           ...p,
-          imageUrl: await signIfNeeded(p.imageUrl ?? null, 900), // 15 min
         }))
       );
 
@@ -144,7 +137,6 @@ export function registerPieceRoutes(app: ExpressApp, requireAuth: RequestHandler
       }
       const row = await storage.getPieceById(req.session.userId!, p.data.id);
       if (!row) return res.status(404).json({ message: "Pièce introuvable" });
-      row.imageUrl = await signIfNeeded(row.imageUrl ?? null, 900);
       return res.json(row);
     })
   );
@@ -180,7 +172,6 @@ export function registerPieceRoutes(app: ExpressApp, requireAuth: RequestHandler
          nextPatch    
           );
       if (!row) return res.status(404).json({ message: "Pièce introuvable" });
-        row.imageUrl = await signIfNeeded(row.imageUrl ?? null, 900);
       return res.json(row);
     })
   );
@@ -219,24 +210,17 @@ app.post(
       return res.status(500).json({ message: "Stockage R2 non configuré" });
     }
 
-    try {
       const userId = req.session.userId!;
       const pieceId = parsed.data.id;
       const original = sanitizeFilename(req.file.originalname || "image");
       const ext = original.includes(".") ? original.slice(original.lastIndexOf(".")) : "";
       const key = `pieces/${userId}/${pieceId}-${Date.now()}-${randomUUID()}${ext}`;
-      const publicUrl = await uploadToR2(key, req.file.buffer, req.file.mimetype);
-      const updated = await storage.setPieceImage(userId, pieceId, publicUrl);
+      await r2PutObject(key, req.file.buffer, req.file.mimetype);
+      const updated = await storage.setPieceImage(userId, pieceId, key);
       if (!updated) return res.status(404).json({ message: "Pièce introuvable" });
-      updated.imageUrl = await signIfNeeded(updated.imageUrl ?? null, 900);
-
       return res.json(updated);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      return res.status(500).json({ message: "Erreur upload R2", detail: message });
-    }
-  }
-);
+    })
+  
 
   // DELETE image
 app.delete(
@@ -251,21 +235,29 @@ app.delete(
     const pieceId = parsed.data.id;
     const piece = await storage.getPieceById(userId, pieceId);
     if (!piece) return res.status(404).json({ message: "Pièce introuvable" });
-    if (piece.imageUrl && R2_AVAILABLE) {
-      try {
-        await deleteFromR2ByUrl(piece.imageUrl);
-      } catch {
+  if (piece.imageUrl && R2_AVAILABLE) {
+        try {
+          const key = /^https?:\/\//i.test(piece.imageUrl)
+            ? keyFromPublicUrl(piece.imageUrl)
+            : piece.imageUrl;
+          if (!key.startsWith("/uploads/")) {
+            await r2DeleteObject(key);
+          }
+        } catch {
+        }
       }
-    }
+      const updated = await storage.clearPieceImage(userId, pieceId);
+      if (!updated) return res.status(404).json({ message: "Pièce introuvable" });
+      updated.imageUrl = null;
+      return res.json(updated);
+    })
 
-    const updated = await storage.clearPieceImage(userId, pieceId);
-    if (!updated) return res.status(404).json({ message: "Pièce introuvable" });
-
-    updated.imageUrl = null;
-    return res.json(updated);
-  }
-);
+    app.get("/api/images/:key(*)", (req, res) => {
+  const key = req.params.key || "";
+  const b64 = Buffer.from(key, "utf8")
+    .toString("base64").replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+  res.redirect(301, `/api/r2/object/${b64}`);
+});
 
 }
-
 
