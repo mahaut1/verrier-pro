@@ -164,7 +164,7 @@ export default function Orders() {
                   Nouvelle commande
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl">
+              <DialogContent className="max-w-3xl p-0">
                 <OrderForm onSuccess={() => setOpenDialog(false)} />
               </DialogContent>
             </Dialog>
@@ -254,7 +254,7 @@ export default function Orders() {
 
         {editOrder && (
           <Dialog open={!!editOrder} onOpenChange={() => setEditOrder(null)}>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="max-w-3xl p-0">
               <OrderEditForm order={editOrder} onSuccess={() => setEditOrder(null)} />
             </DialogContent>
           </Dialog>

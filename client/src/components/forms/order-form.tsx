@@ -177,14 +177,19 @@ export default function OrderForm({ onSuccess }: { onSuccess?: () => void }) {
   };
 
 
-  return (
-    <>
-      <DialogHeader>
+ return (
+    <div className="flex max-h-[85vh] flex-col">
+      {/* Header sticky */}
+      <DialogHeader className="sticky top-0 z-10 border-b bg-white/80 px-6 py-4 backdrop-blur supports-[backdrop-filter]:bg-white/60">
         <DialogTitle>Nouvelle commande</DialogTitle>
       </DialogHeader>
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+        {/* Corps scrollable */}
+        <form
+          onSubmit={form.handleSubmit(onSubmit)}
+          className="flex-1 overflow-y-auto px-6 py-5 space-y-5"
+        >
           {/* Entête commande */}
           <FormField
             control={form.control}
@@ -193,7 +198,7 @@ export default function OrderForm({ onSuccess }: { onSuccess?: () => void }) {
               <FormItem>
                 <FormLabel>Numéro de commande</FormLabel>
                 <FormControl>
-                  <Input placeholder="Laissez vide pour générer automatiquement" {...field} />
+                  <Input placeholder="" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -230,8 +235,8 @@ export default function OrderForm({ onSuccess }: { onSuccess?: () => void }) {
             )}
           />
 
-          {/* Statut & (affichage) montant total désactivé */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Statut & total (affichage) */}
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <FormField
               control={form.control}
               name="status"
@@ -264,7 +269,7 @@ export default function OrderForm({ onSuccess }: { onSuccess?: () => void }) {
                 <FormItem>
                   <FormLabel>Montant total (€)</FormLabel>
                   <FormControl>
-                    <Input type="number" step="0.01" disabled placeholder="Calculé automatiquement" {...field} />
+                    <Input disabled type="number" step="0.01" placeholder="Calculé automatiquement" {...field} />
                   </FormControl>
                   <p className="text-xs text-muted-foreground">
                     Le total est recalculé côté serveur selon les items.
@@ -303,7 +308,7 @@ export default function OrderForm({ onSuccess }: { onSuccess?: () => void }) {
             )}
           />
 
-          {/*  Sélecteur de pièces (filtré par galerie & recherche) */}
+          {/* Sélecteur de pièces */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h4 className="font-semibold">Ajouter des pièces</h4>
@@ -315,9 +320,10 @@ export default function OrderForm({ onSuccess }: { onSuccess?: () => void }) {
               />
             </div>
 
-            <div className="max-h-56 overflow-auto rounded-md border p-2 space-y-1">
+            {/* Liste scrollable indépendante */}
+            <div className="h-60 overflow-auto rounded-md border p-2 space-y-1">
               {filteredPieces.length === 0 ? (
-                <div className="text-sm text-muted-foreground px-1 py-2">
+                <div className="px-1 py-2 text-sm text-muted-foreground">
                   Aucune pièce disponible avec ces filtres.
                 </div>
               ) : (
@@ -326,19 +332,15 @@ export default function OrderForm({ onSuccess }: { onSuccess?: () => void }) {
                   return (
                     <label
                       key={p.id}
-                      className={`flex items-center justify-between rounded px-2 py-1 cursor-pointer ${
+                      className={`flex cursor-pointer items-center justify-between rounded px-2 py-1 ${
                         checked ? "bg-blue-50" : "hover:bg-gray-50"
                       }`}
                     >
                       <div className="flex items-center gap-3">
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={() => toggleSelect(p.id)}
-                        />
-                        <div>
-                          <div className="font-medium">{p.name}</div>
-                          <div className="text-xs text-muted-foreground">
+                        <input type="checkbox" checked={checked} onChange={() => toggleSelect(p.id)} />
+                        <div className="min-w-0">
+                          <div className="truncate font-medium">{p.name}</div>
+                          <div className="truncate text-xs text-muted-foreground">
                             UID: {p.uniqueId}
                             {p.status ? ` • ${p.status}` : ""}
                             {p.galleryId ? ` • Galerie #${p.galleryId}` : ""}
@@ -348,17 +350,11 @@ export default function OrderForm({ onSuccess }: { onSuccess?: () => void }) {
                       <div className="flex items-center gap-2">
                         <span className="text-sm">Prix (€)</span>
                         <Input
-                          value={
-                            priceOverride[p.id] ??
-                            (p.price != null ? String(p.price) : "")
-                          }
+                          value={priceOverride[p.id] ?? (p.price != null ? String(p.price) : "")}
                           onChange={(e) =>
-                            setPriceOverride((prev) => ({
-                              ...prev,
-                              [p.id]: e.target.value,
-                            }))
+                            setPriceOverride((prev) => ({ ...prev, [p.id]: e.target.value }))
                           }
-                          className="w-28 h-8"
+                          className="h-8 w-28"
                           type="number"
                           step="0.01"
                           placeholder="—"
@@ -371,7 +367,6 @@ export default function OrderForm({ onSuccess }: { onSuccess?: () => void }) {
               )}
             </div>
 
-            {/* Récap pièces sélectionnées */}
             {selectedPieceIds.length > 0 && (
               <div className="text-sm text-muted-foreground">
                 {selectedPieceIds.length} pièce(s) sélectionnée(s).
@@ -379,17 +374,19 @@ export default function OrderForm({ onSuccess }: { onSuccess?: () => void }) {
             )}
           </div>
 
-          {/* Actions */}
-          <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="outline" onClick={() => onSuccess?.()}>
-              Annuler
-            </Button>
-            <Button type="submit" disabled={createOrderMutation.isPending}>
-              {createOrderMutation.isPending ? "Création..." : "Créer la commande"}
-            </Button>
+          {/* Footer sticky */}
+          <div className="sticky bottom-0 -mx-6 mt-6 border-t bg-white/80 px-6 py-3 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => onSuccess?.()}>
+                Annuler
+              </Button>
+              <Button type="submit" disabled={createOrderMutation.isPending}>
+                {createOrderMutation.isPending ? "Création..." : "Créer la commande"}
+              </Button>
+            </div>
           </div>
         </form>
       </Form>
-    </>
+    </div>
   );
 }

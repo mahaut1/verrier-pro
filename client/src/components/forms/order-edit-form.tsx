@@ -28,25 +28,27 @@ async function getJson<T>(url: string): Promise<T> {
   return res.json();
 }
 
+//Formschema
 const formSchema = insertOrderSchema.extend({
   totalAmount: z.string().optional(),
 });
 type OrderFormData = z.infer<typeof formSchema>;
-
+type GalleryFilter = "all" | "order" | "none" | number;
 interface OrderEditFormProps {
   order: Order;
   onSuccess?: () => void;
 }
 
+//component
 export default function OrderEditForm({ order, onSuccess }: OrderEditFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  //data queries
   const galleriesQ = useQuery<Gallery[], Error>({
     queryKey: ["/api/galleries"],
     queryFn: () => getJson<Gallery[]>("/api/galleries"),
   });
-
   const piecesQ = useQuery<Piece[], Error>({
     queryKey: ["/api/pieces"],
     queryFn: () => getJson<Piece[]>("/api/pieces"),
@@ -76,17 +78,35 @@ export default function OrderEditForm({ order, onSuccess }: OrderEditFormProps) 
 
   const galleryId = form.watch("galleryId"); // number | null
 
-  //  Sélection/ajout de nouvelles pièces
+ /* add pieces: filtering  */
+
+  const [galleryFilter, setGalleryFilter] = useState<GalleryFilter>("all");
   const [search, setSearch] = useState("");
   const [selectedPieceIds, setSelectedPieceIds] = useState<number[]>([]);
   const [priceOverride, setPriceOverride] = useState<Record<number, string>>({});
 
-  const alreadyInOrder = new Set(items.map((it) => it.pieceId!).filter(Boolean) as number[]);
+  const alreadyInOrder = new Set(
+    items.map((it) => it.pieceId!).filter(Boolean) as number[]
+  );
 
-  // on propose seulement les pièces non déjà liées, filtrées par galerie et par recherche
+  // propose seulement les pièces non déjà liées
   const addablePieces = useMemo(() => {
     let list = pieces.filter((p) => !alreadyInOrder.has(p.id));
-    if (galleryId != null) list = list.filter((p) => p.galleryId === galleryId);
+
+    // filtre galerie
+    if (galleryFilter === "order") {
+      if (order.galleryId != null) {
+        list = list.filter((p) => p.galleryId === order.galleryId);
+      } else {
+        list = list.filter((p) => p.galleryId == null);
+      }
+    } else if (galleryFilter === "none") {
+      list = list.filter((p) => p.galleryId == null);
+    } else if (typeof galleryFilter === "number") {
+      list = list.filter((p) => p.galleryId === galleryFilter);
+    } // "all" => pas de filtre
+
+    // recherche textuelle
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(
@@ -97,9 +117,9 @@ export default function OrderEditForm({ order, onSuccess }: OrderEditFormProps) 
       );
     }
     return list;
-  }, [pieces, alreadyInOrder, galleryId, search]);
+  }, [pieces, alreadyInOrder, galleryFilter, search, order.galleryId]);
 
-  // si on change de galerie, on nettoie la sélection incompatible
+  // si on change la galerie de la commande, nettoyer sélection incompatible
   useEffect(() => {
     if (galleryId == null) return;
     setSelectedPieceIds((prev) =>
@@ -108,8 +128,11 @@ export default function OrderEditForm({ order, onSuccess }: OrderEditFormProps) 
   }, [galleryId, pieces]);
 
   const toggleSelect = (id: number) => {
-    setSelectedPieceIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+    setSelectedPieceIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
   };
+
 
   //  Mutations
   const updateOrderMutation = useMutation({
@@ -122,12 +145,6 @@ export default function OrderEditForm({ order, onSuccess }: OrderEditFormProps) 
         notes: data.notes?.trim() ? data.notes : null,
       };
       return apiRequest("PATCH", `/api/orders/${order.id}`, submitData);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/orders", order.id, "items"] });
-      toast({ title: "Succès", description: "La commande a été modifiée avec succès." });
-      onSuccess?.();
     },
     onError: (error: any) => {
       toast({
@@ -197,15 +214,59 @@ export default function OrderEditForm({ order, onSuccess }: OrderEditFormProps) 
     },
   });
 
+const onSubmit = async (data: OrderFormData) => {
+  try {
+    // 1) MAJ de la commande
+    await updateOrderMutation.mutateAsync({
+      ...data,
+      status: coerceStatus(data.status),
+      galleryId: data.galleryId ?? null,
+      shippingAddress: data.shippingAddress?.trim() || null,
+      notes: data.notes?.trim() || null,
+    });
 
-  return (
-    <>
-      <DialogHeader>
+    // 2) Ajout des pièces (si des pièces sont cochées)
+    if (selectedPieceIds.length) {
+      await addItemsMutation.mutateAsync();
+    }
+
+    // 3) Rafraîchir + reset + feedback
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["/api/orders"] }),
+      queryClient.invalidateQueries({ queryKey: ["/api/orders", order.id, "items"] }),
+    ]);
+    setSelectedPieceIds([]);
+    setPriceOverride({});
+    toast({
+      title: "Succès",
+      description:
+        selectedPieceIds.length
+          ? "Commande modifiée et pièces ajoutées."
+          : "Commande modifiée.",
+    });
+    onSuccess?.();
+  } catch (e: any) {
+    toast({
+      title: "Erreur",
+      description: e?.message || "Échec de la modification.",
+      variant: "destructive",
+    });
+  }
+};
+//front
+ return (
+    <div className="flex max-h-[85vh] flex-col">
+      {/* Header sticky */}
+      <DialogHeader className="sticky top-0 z-10 border-b bg-white/80 px-6 py-4 backdrop-blur supports-[backdrop-filter]:bg-white/60">
         <DialogTitle>Modifier la commande</DialogTitle>
       </DialogHeader>
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit((data) => updateOrderMutation.mutate(data))} className="space-y-6">
+        {/* Corps scrollable */}
+        <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="flex-1 overflow-y-auto px-6 py-5 space-y-6"
+        >
           {/* Champs commande */}
           <FormField
             control={form.control}
@@ -251,7 +312,7 @@ export default function OrderEditForm({ order, onSuccess }: OrderEditFormProps) 
             )}
           />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <FormField
               control={form.control}
               name="status"
@@ -326,7 +387,7 @@ export default function OrderEditForm({ order, onSuccess }: OrderEditFormProps) 
             )}
           />
 
-          {/* Items actuels de la commande */}
+          {/* Items actuels */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h4 className="font-semibold">Pièces de la commande</h4>
@@ -342,8 +403,8 @@ export default function OrderEditForm({ order, onSuccess }: OrderEditFormProps) 
                   return (
                     <li key={it.id} className="flex items-center justify-between p-2">
                       <div className="min-w-0">
-                        <div className="font-medium truncate">{p?.name ?? `Pièce #${it.pieceId}`}</div>
-                        <div className="text-xs text-muted-foreground">
+                        <div className="truncate font-medium">{p?.name ?? `Pièce #${it.pieceId}`}</div>
+                        <div className="truncate text-xs text-muted-foreground">
                           UID: {p?.uniqueId ?? "—"} {p?.status ? `• ${p.status}` : ""}
                         </div>
                       </div>
@@ -364,22 +425,51 @@ export default function OrderEditForm({ order, onSuccess }: OrderEditFormProps) 
               </ul>
             )}
           </div>
+                {/* Ajout de pièces */}
+                <div className="space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h4 className="font-semibold">Ajouter des pièces</h4>
 
-          {/* Ajouter de nouvelles pièces */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h4 className="font-semibold">Ajouter des pièces</h4>
-              <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Rechercher (nom, UID, couleur)…"
-                className="max-w-xs"
-              />
-            </div>
+                    {/* Sélecteur de filtre galerie */}
+                    <Select
+                      value={String(galleryFilter)}
+                      onValueChange={(v) =>
+                        setGalleryFilter(
+                          v === "all" || v === "order" || v === "none" ? v : Number(v)
+                        )
+                      }
+                    >
+                      <SelectTrigger className="w-56">
+                        <SelectValue placeholder="Filtrer par galerie" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Toutes les galeries</SelectItem>
+                        <SelectItem value="order">Même que la commande</SelectItem>
+                        <SelectItem value="none">Sans galerie</SelectItem>
+                        <div className="px-2 pt-1 pb-1 text-xs text-muted-foreground">
+                          Spécifique
+                        </div>
+                        {galleries.map((g) => (
+                          <SelectItem key={g.id} value={String(g.id)}>
+                            {g.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
 
-            <div className="max-h-56 overflow-auto rounded-md border p-2 space-y-1">
+                    {/* Recherche texte */}
+                    <Input
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      placeholder="Rechercher (nom, UID, couleur)…"
+                      className="max-w-xs"
+                    />
+                  </div>
+
+            {/* Liste scrollable locale */}
+            <div className="h-60 overflow-auto rounded-md border p-2 space-y-1">
               {addablePieces.length === 0 ? (
-                <div className="text-sm text-muted-foreground px-1 py-2">
+                <div className="px-1 py-2 text-sm text-muted-foreground">
                   Aucune pièce disponible avec ces filtres.
                 </div>
               ) : (
@@ -388,15 +478,15 @@ export default function OrderEditForm({ order, onSuccess }: OrderEditFormProps) 
                   return (
                     <label
                       key={p.id}
-                      className={`flex items-center justify-between rounded px-2 py-1 cursor-pointer ${
+                      className={`flex cursor-pointer items-center justify-between rounded px-2 py-1 ${
                         checked ? "bg-blue-50" : "hover:bg-gray-50"
                       }`}
                     >
                       <div className="flex items-center gap-3">
                         <input type="checkbox" checked={checked} onChange={() => toggleSelect(p.id)} />
-                        <div>
-                          <div className="font-medium">{p.name}</div>
-                          <div className="text-xs text-muted-foreground">
+                        <div className="min-w-0">
+                          <div className="truncate font-medium">{p.name}</div>
+                          <div className="truncate text-xs text-muted-foreground">
                             UID: {p.uniqueId}
                             {p.status ? ` • ${p.status}` : ""}
                             {p.galleryId ? ` • Galerie #${p.galleryId}` : ""}
@@ -410,7 +500,7 @@ export default function OrderEditForm({ order, onSuccess }: OrderEditFormProps) 
                           onChange={(e) =>
                             setPriceOverride((prev) => ({ ...prev, [p.id]: e.target.value }))
                           }
-                          className="w-28 h-8"
+                          className="h-8 w-28"
                           type="number"
                           step="0.01"
                           placeholder="—"
@@ -434,17 +524,19 @@ export default function OrderEditForm({ order, onSuccess }: OrderEditFormProps) 
             </div>
           </div>
 
-          {/* Actions du formulaire principal */}
-          <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="outline" onClick={() => onSuccess?.()}>
-              Annuler
-            </Button>
-            <Button type="submit" disabled={updateOrderMutation.isPending}>
-              {updateOrderMutation.isPending ? "Modification..." : "Enregistrer les changements"}
-            </Button>
+          {/* Footer sticky */}
+          <div className="sticky bottom-0 -mx-6 mt-6 border-t bg-white/80 px-6 py-3 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => onSuccess?.()}>
+                Annuler
+              </Button>
+              <Button type="submit" disabled={updateOrderMutation.isPending}>
+                {updateOrderMutation.isPending ? "Modification..." : "Enregistrer les changements"}
+              </Button>
+            </div>
           </div>
         </form>
       </Form>
-    </>
+    </div>
   );
 }
