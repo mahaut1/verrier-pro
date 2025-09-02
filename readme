@@ -1,0 +1,258 @@
+ VerrierPro 
+
+Système de gestion complet pour artisans verriers professionnels
+
+VerrierPro est une plateforme web moderne conçue spécialement pour les artisans verriers. Elle couvre l'intégralité du workflow professionnel : de la création artistique jusqu'à la vente, en passant par la gestion des galeries partenaires et l'optimisation des stocks.
+
+ Fonctionnalités Principales
+
+  Gestion des Créations
+- **Catalogue personnel** : Répertoire complet des pièces en verre
+- **Types configurables** : Poissons, tortues, vases, luminaires, etc.
+- **Suivi statuts** : De la création à la livraison
+- **Upload photos** : Documentation visuelle haute qualité
+- **Localisation** : Atelier, galerie, client en temps réel
+
+ Réseau de Galeries
+- **Partenaires multiples** : Gestion complète des galeries
+- **Taux commission** : Configuration par partenaire
+- **Suivi exposition** : Pièces exposées par lieu
+- **Contacts détaillés** : Coordonnées et notes relationnelles
+
+ Commandes et Ventes
+- **Workflow complet** : De la commande à la livraison
+- **Calcul automatique** : Totaux et commissions
+- **Gestion statuts** : Pending → Processing → Shipped → Delivered
+- **Historique client** : Suivi des relations commerciales
+
+Gestion de Stock
+- **Matériaux spécialisés** : Verres colorés, outils, consommables
+- **Seuils d'alerte** : Notifications stock bas automatiques
+- **Mouvements tracés** : Entrées/sorties documentées
+- **Fournisseurs** : Carnet d'adresses intégré
+
+ Tableau de Bord
+- **Vue d'ensemble** : Statistiques production et ventes
+- **Activité récente** : Dernières modifications
+- **Alertes** : Stock critique, commandes urgentes
+- **Performance** : Métriques par galerie et période
+
+ Architecture Technique
+
+Technologies
+
+Frontend:  React 18 + TypeScript + React Router
+Backend:   Express.js + TypeScript + Drizzle ORM
+Database:  PostgreSQL (Neon Cloud + Docker local)
+UI:        Tailwind CSS + shadcn/ui + Radix UI
+Auth:      Sessions Express + bcrypt
+Build:     Vite + ESBuild
+State:     TanStack React Query
+```
+
+### Structure du Projet
+```
+VerrierPro/
+├── client/                 # Frontend React
+│   ├── src/
+│   │   ├── components/     # Composants réutilisables
+│   │   ├── pages/          # Pages de l'application
+│   │   ├── hooks/          # Hooks React personnalisés
+│   │   └── lib/            # Utilitaires frontend
+├── server/                 # Backend Express
+│   ├── routes/             # Routes API modulaires
+│   ├── storage/            # Couche d'accès données
+│   └── middleware/         # Middlewares Express
+├── shared/                 # Code partagé
+│   └── schema.ts           # Schéma base de données
+└── uploads/                # Stockage fichiers images
+```
+
+ Installation et Démarrage
+
+Prérequis
+- **Node.js** 18+ et npm
+- **PostgreSQL** (Docker recommandé)
+- **Git** pour le clonage
+
+Installation Rapide
+
+```bash
+# 1. Cloner le projet
+git clone https://github.com/mahaut1/verrier-pro
+cd VerrierPro
+
+# 2. Installer les dépendances
+npm install
+
+# 3. Configuration environnement
+cp .env.example .env.local
+# Éditer .env.local avec vos variables
+
+# 4. Base de données (Docker)
+docker-compose up -d
+
+# 5. Migration base
+npm run db:push
+
+# 6. Démarrage développement
+npm run dev
+```
+
+**Accès** : http://localhost:5000
+
+```
+
+## 🗄️ Base de Données
+
+### Modèle Relationnel
+Le système utilise **11 tables PostgreSQL** optimisées :
+
+- **users** : Comptes artisans
+- **sessions** : Sessions utilisateur  
+- **pieces** : Créations verrières
+- **piece_types** : Catégories de pièces
+- **galleries** : Galeries partenaires
+- **orders** : Commandes clients
+- **order_items** : Éléments de commande
+- **stock_items** : Articles en stock
+- **stock_movements** : Mouvements de stock
+- **event**: Evenements
+- ** event-pieces**: Evenements pièces
+
+### Migration
+```bash
+# Appliquer le schéma
+npm run db:push
+
+# Développement local avec Docker
+npm run db:push --config=drizzle-docker.config.ts
+```
+
+ Utilisation
+
+ Premier Démarrage
+
+1. **Inscription** : Créer votre compte artisan
+2. **Types de pièces** : Définir vos catégories (Poissons, Vases, etc.)
+3. **Première création** : Ajouter une pièce avec photo
+4. **Galerie** : Configurer votre premier partenaire
+5. **Stock** : Initialiser vos matériaux de base
+
+### Workflow Quotidien
+
+1. **Matin** : Consulter tableau de bord et alertes
+2. **Production** : Mettre à jour statuts pièces
+3. **Commercial** : Traiter nouvelles commandes
+4. **Soir** : Actualiser stock et planning
+
+### Navigation Principale
+
+- ** Accueil** : Vue d'ensemble et statistiques
+- ** Créations** : Gestion du portfolio artistique
+- ** Galeries** : Réseau de partenaires
+- ** Commandes** : Suivi commercial
+- ** Stock** : Gestion matières premières
+- ** Evenements**: Gestion des évènements
+
+## 🔧 Scripts Disponibles
+
+```bash
+# Développement
+npm run dev          # Serveur développement avec hot reload
+npm run check        # Vérification types TypeScript
+
+# Production  
+npm run build        # Build optimisé pour production
+npm run start        # Démarrage serveur production
+
+# Base de données
+npm run db:push      # Migration schéma vers base
+```
+
+##  Sécurité
+
+### Authentification
+- **Sessions sécurisées** : httpOnly cookies avec expiration
+- **Mots de passe** : Hashage bcrypt avec salt
+- **Protection CSRF** : Express sessions intégrées
+- **Rate limiting** : Protection contre les attaques
+
+### Données
+- **Isolation multi-tenant** : Séparation stricte par artisan
+- **Validation complète** : Côté client et serveur
+- **Audit trail** : Traçabilité des modifications
+- **Backup** : Sauvegardes automatiques base
+
+##  Déploiement
+
+### Environnements Supportés
+
+#### Développement Local
+```bash
+# PostgreSQL Docker
+docker-compose up -d
+npm run dev
+```
+
+#### Production Cloud
+- **Railway** : Déploiement automatique, BDD prod
+- **Neon** : Base données PostgreSQL cloud
+- **Variables d'environnement** configurées
+
+
+
+##  Performance
+
+### Métriques Optimisées
+- **Frontend** : Cache TanStack Query 
+- **Backend** : Index PostgreSQL sur requêtes fréquentes
+- **Images** : Compression et formats optimisés
+- **Bundle** : Code splitting et lazy loading
+
+### Capacités
+- **Utilisateurs** : Multi-tenant illimité
+- **Pièces** : Milliers par artisan
+- **Images** : 5MB max par fichier
+- **Requêtes** : <100ms temps réponse typique
+
+## 🛠️ Développement
+
+### Contribution
+1. **Fork** le projet
+2. **Branch** feature (`git checkout -b feature/nouvelle-fonctionnalite`)
+3. **Commit** (`git commit -m 'Ajout nouvelle fonctionnalité'`)
+4. **Push** (`git push origin feature/nouvelle-fonctionnalite`)  
+5. **Pull Request** avec description détaillée
+
+### Standards Code
+- **TypeScript strict** : Type safety complète
+- **ESLint** : Linting automatique
+- **Prettier** : Formatage cohérent
+- **Tests** : Jest pour backend, testing-library frontend
+
+### Architecture Patterns
+- **Domain Driven Design** : Logique métier centralisée
+- **Repository Pattern** : Abstraction accès données
+- **Command Query Separation** : Lecture/écriture séparées
+
+
+
+---
+
+##  Pourquoi VerrierPro ?
+### Pour les Artisans
+ **Gain temps** : -85% tâches administratives  
+ **Professionnalisation** : Image client renforcée  
+ **Croissance** : Outils d'expansion intégrés  
+ **Spécialisé** : Conçu pour le métier  
+
+
+
+---
+
+**VerrierPro** - *Transformer l'art du verre par la technologie*
+
+---
+
+*Développé avec ❤️ pour la communauté des artisans verriers*
