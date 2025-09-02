@@ -36,7 +36,7 @@ function OrderItemsList({
   if (!open) return null;
 
   return (
-    <div className="mt-4 rounded-lg border bg-gray-50 p-3">
+    <div className="mt-4 rounded-lg border text-blue-600">
       <div className="text-sm font-semibold mb-2">Pièces de la commande</div>
       {isLoading ? (
         <div className="space-y-2">
@@ -151,10 +151,10 @@ export default function Orders() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="md:flex md:items-center md:justify-between">
           <div className="flex-1 min-w-0">
-            <h2 className="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl sm:truncate">
+            <h2 className="text-2xl font-bold leading-7 text-blue-600 sm:text-3xl sm:truncate">
               Commandes
             </h2>
-            <p className="text-sm text-gray-500 mt-1">Gérez vos commandes et ventes</p>
+            <p className="text-sm text-blue-600 mt-1">Gérez vos commandes et ventes</p>
           </div>
           <div className="mt-4 flex md:mt-0 md:ml-4">
             <Dialog open={openDialog} onOpenChange={setOpenDialog}>

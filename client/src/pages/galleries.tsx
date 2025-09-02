@@ -154,7 +154,7 @@ export default function Galleries() {
             <h2 className="text-2xl font-bold leading-7 text-blue-600 sm:text-3xl sm:truncate">
               Galeries partenaires
             </h2>
-            <p className="text-sm text-gray-500 mt-1">Gérez vos partenaires et expositions</p>
+            <p className="text-sm text-blue-600 mt-1">Gérez vos partenaires</p>
           </div>
           <div className="mt-4 flex md:mt-0 md:ml-4">
             <Dialog open={openDialog} onOpenChange={setOpenDialog}>

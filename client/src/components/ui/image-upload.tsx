@@ -2,7 +2,6 @@ import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { resolveImageUrl } from "../../lib/images";
 
-
 type Props = {
   pieceId: number;
   currentImageUrl?: string;
@@ -18,9 +17,10 @@ export default function ImageUpload({
 }: Props) {
   const [file, setFile] = React.useState<File | null>(null);
   const [isSending, setIsSending] = React.useState(false);
-  const inputId = React.useId();
-
   const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
+  const fileRef = React.useRef<HTMLInputElement>(null);
+
+  // preview temporaire
   React.useEffect(() => {
     if (!file) {
       setPreviewUrl(null);
@@ -31,29 +31,54 @@ export default function ImageUpload({
     return () => URL.revokeObjectURL(url);
   }, [file]);
 
+  const openPicker = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!disabled && !isSending) fileRef.current?.click();
+  };
+
   async function handleUpload() {
     if (!file) return;
     setIsSending(true);
     try {
       const fd = new FormData();
-      fd.append("image", file, file.name); // doit s’appeler "image"
+      // on envoie sous deux clés pour couvrir l’API
+      fd.append("image", file, file.name);
+      fd.append("file", file, file.name);
 
       const res = await fetch(`/api/pieces/${pieceId}/image`, {
         method: "POST",
         body: fd,
         credentials: "include",
       });
+
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message || `Upload failed (${res.status})`);
+        let msg = `Upload failed (${res.status})`;
+        try {
+          const err = await res.json();
+          msg = err?.message || msg;
+        } catch {}
+        throw new Error(msg);
       }
-      const row = await res.json();
-      onImageUploaded?.(row.imageUrl ?? null);
+
+      // certaines routes renvoient 204, d’autres un JSON
+      let imageUrl: string | null = null;
+      const ct = res.headers.get("content-type") || "";
+      if (ct.includes("application/json")) {
+        const data = await res.json();
+        imageUrl =
+          data?.imageUrl ??
+          data?.url ??
+          data?.location ??
+          data?.piece?.imageUrl ??
+          null;
+      }
+      onImageUploaded?.(imageUrl);
       setFile(null);
     } catch (e: any) {
       alert(e?.message || "Échec du téléversement");
     } finally {
       setIsSending(false);
+      if (fileRef.current) fileRef.current.value = "";
     }
   }
 
@@ -65,11 +90,15 @@ export default function ImageUpload({
         credentials: "include",
       });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message || `Delete failed (${res.status})`);
+        let msg = `Delete failed (${res.status})`;
+        try {
+          const err = await res.json();
+          msg = err?.message || msg;
+        } catch {}
+        throw new Error(msg);
       }
-      const row = await res.json();
-      onImageUploaded?.(row.imageUrl ?? null);
+      // 204 → pas de JSON, on force null
+      onImageUploaded?.(null);
       setFile(null);
     } catch (e: any) {
       alert(e?.message || "Échec de la suppression");
@@ -78,12 +107,11 @@ export default function ImageUpload({
     }
   }
 
-
-   return (
+  return (
     <div className="space-y-3">
       <div className="grid items-center gap-3 md:grid-cols-[auto,1fr,auto,auto] grid-cols-1">
         <input
-          id={inputId}
+          ref={fileRef}
           type="file"
           accept="image/*"
           className="sr-only"
@@ -91,11 +119,14 @@ export default function ImageUpload({
           disabled={disabled || isSending}
         />
 
-        <label htmlFor={inputId}>
-          <Button type="button" variant="outline" disabled={disabled || isSending}>
-            Choisir un fichier
-          </Button>
-        </label>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={openPicker}
+          disabled={disabled || isSending}
+        >
+          Choisir un fichier
+        </Button>
 
         <div className="min-w-0 truncate text-sm text-muted-foreground">
           {file ? file.name : "Aucun fichier sélectionné"}

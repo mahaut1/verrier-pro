@@ -145,10 +145,70 @@ export const orderItems = pgTable("order_items", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const events = pgTable("events", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  name: text("name").notNull(),
+  type: text("type").notNull(), // 'exhibition' | 'fair' | 'workshop' | 'sale'
+  venue: text("venue"),
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date"),
+  description: text("description"),
+  website: text("website"),
+  participationFee: decimal("participation_fee", { precision: 10, scale: 2 }),
+  status: text("status").notNull().default("planned"), // 'planned', 'confirmed', 'completed', 'cancelled'
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const eventPieces = pgTable("event_pieces", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  eventId: integer("event_id").references(() => events.id),
+  pieceId: integer("piece_id").references(() => pieces.id),
+  displayPrice: decimal("display_price", { precision: 10, scale: 2 }),
+  sold: boolean("sold").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 
 
 export const orderStatusEnum = z.enum(["pending", "processing", "shipped", "delivered", "cancelled"]);
 export type OrderStatus = z.infer<typeof orderStatusEnum>;
+
+export const eventTypeValues = ["exhibition", "fair", "workshop", "sale"] as const;
+export const eventStatusValues = ["planned", "confirmed", "completed", "cancelled"] as const;
+
+export const insertEventSchema = z.object({
+  name: z.string().min(1),
+  type: z.enum(eventTypeValues),
+  venue: z.string().trim().optional().nullable(),
+  startDate: z.coerce.date(),
+  endDate: z.coerce.date().optional().nullable(),
+  description: z.string().optional().nullable(),
+  website: z.string().url().optional().nullable(),
+  participationFee: z.string().optional().nullable(), // comme pour price ailleurs
+  status: z.enum(eventStatusValues).default("planned"),
+  notes: z.string().optional().nullable(),
+});
+
+export const updateEventSchema = insertEventSchema.partial();
+
+export type Event = typeof events.$inferSelect;
+export type InsertEvent = typeof events.$inferInsert;
+
+export const insertEventPieceSchema = z.object({
+  eventId: z.coerce.number().int().positive(),
+  pieceId: z.coerce.number().int().positive(),
+  displayPrice: z.string().optional().nullable(),
+  sold: z.boolean().optional(),
+});
+
+export const updateEventPieceSchema = z.object({
+  displayPrice: z.string().optional().nullable(),
+  sold: z.boolean().optional(),
+});
 
 export const insertOrderSchema = createInsertSchema(orders, {
   orderNumber: z.string().min(1),
@@ -248,3 +308,5 @@ export type Order = typeof orders.$inferSelect;
 export type InsertOrder = z.infer<typeof insertOrderSchema>;
 export type OrderItem = typeof orderItems.$inferSelect;
 export type InsertOrderItem = z.infer<typeof insertOrderItemSchema>;
+export type EventPiece = typeof eventPieces.$inferSelect;
+export type InsertEventPiece = typeof eventPieces.$inferInsert;

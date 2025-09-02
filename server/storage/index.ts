@@ -7,7 +7,8 @@ import { StockMovementsStorage } from "./stock-movements.storage.js";
 export type { PieceListQuery } from "./storage.base.js";
 import { OrdersStorage } from "./orders.storage.js";
 import { OrderItemsStorage } from "./order-items.storage.js";
-
+import { EventsStorage } from "./events.storage.js";
+import { EventPiecesStorage } from "./event-pieces.storage.js";
 
 const users = new UsersStorage();
 const pieces = new PiecesStorage();
@@ -17,6 +18,8 @@ const stockItems = new StockItemsStorage();
 const stockMovements = new StockMovementsStorage();
 const orders = new OrdersStorage();
 const orderItems = new OrderItemsStorage();
+const events = new EventsStorage();
+const eventPiecesStore = new EventPiecesStorage();
 
 export const storage = {
   // USERS
@@ -106,7 +109,7 @@ export const storage = {
   recalcOrderTotal:  (userId: number, orderId: number)                     =>
      orders.recalcTotal(userId, orderId),
 
-  // ——— ORDER ITEMS ———
+  // ORDER ITEMS 
   createOrderItem:   (...a: Parameters<OrderItemsStorage["createItem"]>)   => 
     orderItems.createItem(...a),
   listOrderItems:    (...a: Parameters<OrderItemsStorage["listItems"]>)    => 
@@ -118,11 +121,24 @@ export const storage = {
   getOrderItemById:  (...a: Parameters<OrderItemsStorage["getItemById"]>)  =>
      orderItems.getItemById(...a),
 
+  // ——— EVENTS ———
+createEvent:     (...a: Parameters<EventsStorage["createEvent"]>)    => events.createEvent(...a),
+listEvents:      (...a: Parameters<EventsStorage["listEvents"]>)     => events.listEvents(...a),
+getEventById:    (...a: Parameters<EventsStorage["getEventById"]>)   => events.getEventById(...a),
+updateEvent:     (...a: Parameters<EventsStorage["updateEvent"]>)    => events.updateEvent(...a),
+deleteEvent:     (...a: Parameters<EventsStorage["deleteEvent"]>)    => events.deleteEvent(...a),
+
+// ——— EVENT PIECES ———
+listEventPieces:  (...a: Parameters<EventPiecesStorage["listEventPieces"]>)  => eventPiecesStore.listEventPieces(...a),
+getEventPieceById:(...a: Parameters<EventPiecesStorage["getEventPieceById"]>)=> eventPiecesStore.getEventPieceById(...a),
+addEventPiece:    (...a: Parameters<EventPiecesStorage["addEventPiece"]>)    => eventPiecesStore.addEventPiece(...a),
+updateEventPiece: (...a: Parameters<EventPiecesStorage["updateEventPiece"]>) => eventPiecesStore.updateEventPiece(...a),
+deleteEventPiece: (...a: Parameters<EventPiecesStorage["deleteEventPiece"]>) => eventPiecesStore.deleteEventPiece(...a),
 
 };
 
 
 
 
-export { users, pieces, galleries, pieceTypes, stockItems, stockMovements, orders, orderItems }; 
+export { users, pieces, galleries, pieceTypes, stockItems, stockMovements, orders, orderItems, events, eventPiecesStore }; 
 export type AppStorage = typeof storage;

@@ -11,6 +11,7 @@ import Register from "./pages/register";
 import Galleries from "./pages/galleries";
 import Stocks from "./pages/stocks";
 import Orders from "./pages/orders";
+import Events from "./pages/events";
 
 function RequireAuth({ children }: { children: JSX.Element }) {
   const { isLoading, isAuthenticated } = useAuth();
@@ -50,6 +51,7 @@ export default function App() {
             <Route path="galleries" element={<Galleries />} />
             <Route path="stocks" element={<Stocks />} />
             <Route path="orders" element={<Orders />} />
+            <Route path="events" element={<Events />} />
 
           </Route>
 
