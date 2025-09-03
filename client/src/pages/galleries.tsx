@@ -42,22 +42,35 @@ function GalleryPiecesList({ galleryId, open }: { galleryId: number; open: boole
         <div className="text-sm text-gray-500">Aucune pièce pour cette galerie.</div>
       ) : (
         <ul className="space-y-2">
-          {pieces.map((p) => (
-            <li key={p.id} className="flex items-center justify-between rounded-md bg-white p-2">
-              <div className="flex items-center gap-3">
+ {pieces.map((p) => (
+            <li
+              key={p.id}
+              className="flex items-center justify-between gap-3 rounded-md bg-white p-2"
+            >
+              <div className="flex items-center gap-3 min-w-0">
                 {p.imageUrl ? (
-                  <ImageIcon className="h-4 w-4 text-gray-400" />
+                  <img
+                    src={p.imageUrl}
+                    alt={p.name}
+                    className="h-12 w-16 rounded object-cover border"
+                  />
                 ) : (
-                  <Box className="h-4 w-4 text-gray-400" />
+                  <div className="h-12 w-16 rounded border bg-gray-50 flex items-center justify-center">
+                    <ImageIcon className="h-5 w-5 text-gray-400" />
+                  </div>
                 )}
-                <div>
-                  <div className="font-medium">{p.name}</div>
-                  <div className="text-xs text-gray-500">
-                    UID: {p.uniqueId} {p.status ? `• ${p.status}` : ""}
+
+                <div className="min-w-0">
+                  <div className="truncate font-medium">{p.name}</div>
+                  <div className="truncate text-xs text-gray-500">
+                    UID: {p.uniqueId ?? "—"}{p.status ? ` • ${p.status}` : ""}
                   </div>
                 </div>
               </div>
-              <div className="text-sm">{p.price != null ? `${p.price} €` : "—"}</div>
+
+              <div className="shrink-0 text-sm font-medium">
+                {p.price != null && p.price !== "" ? `${p.price} €` : "—"}
+              </div>
             </li>
           ))}
         </ul>

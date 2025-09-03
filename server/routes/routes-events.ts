@@ -27,6 +27,17 @@ const insertEventSchema = z.object({
 });
 const updateEventSchema = insertEventSchema.partial();
 
+const eventPieceInput = z.object({
+  pieceId: z.coerce.number().int().positive(),
+  displayPrice: z.string().trim().optional().nullable(),
+  sold: z.coerce.boolean().optional().default(false),
+});
+
+/* ✨ Schéma complet pour PATCH (événement + pièces) */
+const updateEventWithPiecesSchema = updateEventSchema.extend({
+  pieces: z.array(eventPieceInput).optional(),
+});
+
 const listQuerySchema = z.object({
   status: z.string().trim().min(1).optional(),
   type: z.string().trim().min(1).optional(),
@@ -88,16 +99,24 @@ export function registerEventRoutes(app: Express, requireAuth: RequestHandler) {
       if (!p.success) {
         return res.status(400).json({ message: "Paramètres invalides", errors: p.error.issues });
       }
-      const body = updateEventSchema.safeParse(req.body);
+
+      const body = updateEventWithPiecesSchema.safeParse(req.body);
       if (!body.success) {
         return res.status(400).json({ message: "Données invalides", errors: body.error.issues });
       }
-      const row = await storage.updateEvent(req.session.userId!, p.data.id, body.data);
+
+      const { pieces, ...eventPatch } = body.data;
+      const row = await storage.updateEventWithPieces(
+        req.session.userId!,
+        p.data.id,
+        eventPatch,
+        pieces
+      );
+
       if (!row) return res.status(404).json({ message: "Événement introuvable" });
       return res.json(row);
     })
   );
-
   // DELETE
   app.delete(
     "/api/events/:id",

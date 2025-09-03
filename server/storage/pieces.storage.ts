@@ -24,6 +24,7 @@ function out(row: PieceRow): PieceRow {
     imageUrl: resolveImageUrl(row.imageUrl ?? null) ?? null,
   };
 }
+
 export class PiecesStorage extends StorageBase {
   // Mémoire -> Row (puis normalisation sortie)
   private memToRow(p: MemoryPiece): PieceRow {
@@ -40,7 +41,7 @@ export class PiecesStorage extends StorageBase {
       currentLocation: p.currentLocation,
       galleryId: p.galleryId,
       price: toRowPrice(p.price),
-      imageUrl: p.imageUrl, // stockée telle quelle (absolue R2 ou /uploads)
+      imageUrl: p.imageUrl, 
       createdAt: p.createdAt,
       updatedAt: p.updatedAt,
     });
@@ -50,7 +51,7 @@ export class PiecesStorage extends StorageBase {
     if (this.useDatabase) {
       const [row] = await db
         .insert(schema.pieces)
-        .values({ ...data, userId }) // imageUrl stockée telle quelle
+        .values({ ...data, userId }) 
         .returning();
       return out(row as PieceRow);
     }
@@ -72,7 +73,7 @@ export class PiecesStorage extends StorageBase {
       currentLocation: data.currentLocation ?? "atelier",
       galleryId: data.galleryId ?? null,
       price: data.price ?? null,
-      imageUrl: data.imageUrl ?? null, // tel quel
+      imageUrl: data.imageUrl ?? null, 
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -124,7 +125,6 @@ export class PiecesStorage extends StorageBase {
     id: number,
     patch: Partial<PieceInsertClean>
   ): Promise<PieceRow | null> {
-    // On stocke tel quel; on peut normaliser "" -> null si nécessaire
     const cleanedPatch: Partial<PieceInsertClean> = {
       ...patch,
       imageUrl: patch.imageUrl === "" ? null : patch.imageUrl,

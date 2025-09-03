@@ -127,6 +127,7 @@ listEvents:      (...a: Parameters<EventsStorage["listEvents"]>)     => events.l
 getEventById:    (...a: Parameters<EventsStorage["getEventById"]>)   => events.getEventById(...a),
 updateEvent:     (...a: Parameters<EventsStorage["updateEvent"]>)    => events.updateEvent(...a),
 deleteEvent:     (...a: Parameters<EventsStorage["deleteEvent"]>)    => events.deleteEvent(...a),
+updateEventWithPieces: (...a: Parameters<EventsStorage["updateEventWithPieces"]>) => events.updateEventWithPieces(...a),
 
 // ——— EVENT PIECES ———
 listEventPieces:  (...a: Parameters<EventPiecesStorage["listEventPieces"]>)  => eventPiecesStore.listEventPieces(...a),

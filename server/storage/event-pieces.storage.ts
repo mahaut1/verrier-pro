@@ -1,6 +1,7 @@
 import { db } from "../db.js";
 import { and, eq } from "drizzle-orm";
 import { eventPieces, pieces } from "../../shared/schema.js";
+import { resolveImageUrl } from "../../shared/images.js";
 
 export class EventPiecesStorage {
   async listEventPieces(userId: number, eventId: number) {
@@ -11,18 +12,20 @@ export class EventPiecesStorage {
         pieceId: eventPieces.pieceId,
         displayPrice: eventPieces.displayPrice,
         sold: eventPieces.sold,
-        createdAt: eventPieces.createdAt,
-        // infos pièce (join)
-        pieceName: pieces.name,
+        createdAt: eventPieces.createdAt,        pieceName: pieces.name,
         pieceUniqueId: pieces.uniqueId,
         pieceStatus: pieces.status,
         piecePrice: pieces.price,
+        pieceImageUrl: pieces.imageUrl, 
       })
       .from(eventPieces)
       .leftJoin(pieces, eq(pieces.id, eventPieces.pieceId))
       .where(and(eq(eventPieces.userId, userId), eq(eventPieces.eventId, eventId)));
 
-    return rows;
+return rows.map(r => ({
+      ...r,
+      pieceImageUrl: resolveImageUrl(r.pieceImageUrl ?? null) ?? null,
+    }));
   }
 
   async getEventPieceById(userId: number, id: number) {

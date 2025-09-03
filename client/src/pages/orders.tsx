@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, ShoppingCart, Edit, Trash2, ChevronDown, ChevronUp, Box } from "lucide-react";
+import { Plus, ShoppingCart, Edit, Trash2, ChevronDown, ChevronUp, Box, Image as ImageIcon } from "lucide-react";
 import OrderForm from "../components/forms/order-form";
 import OrderEditForm from "../components/forms/order-edit-form";
 import { useToast } from "../hooks/useToast";
@@ -47,25 +47,43 @@ function OrderItemsList({
       ) : items.length === 0 ? (
         <div className="text-sm text-gray-500">Aucune pièce dans cette commande.</div>
       ) : (
-        <ul className="space-y-2">
-          {items.map((it) => {
-            const p = it.pieceId ? pieceById.get(it.pieceId) : undefined;
-            return (
-              <li key={it.id} className="flex items-center justify-between rounded-md bg-white p-2">
-                <div className="flex items-center gap-3">
-                  <Box className="h-4 w-4 text-gray-400" />
-                  <div>
-                    <div className="font-medium">
-                      {p?.name ?? (it.pieceId ? `Pièce #${it.pieceId}` : "Pièce inconnue")}
-                    </div>
-                    {p?.uniqueId && <div className="text-xs text-gray-500">UID: {p.uniqueId}</div>}
-                  </div>
-                </div>
-                <div className="text-sm">Prix: {it.price ?? "—"} €</div>
-              </li>
-            );
-          })}
-        </ul>
+<ul className="space-y-2">
+  {items.map((it) => {
+    const p = it.pieceId ? pieceById.get(it.pieceId) : undefined;
+
+    return (
+      <li key={it.id} className="flex items-center justify-between gap-3 rounded-md bg-white p-2">
+        <div className="flex items-center gap-3 min-w-0">
+          {p?.imageUrl ? (
+            <img
+              src={p.imageUrl}
+              alt={p.name ?? (it.pieceId ? `Pièce #${it.pieceId}` : "Pièce")}
+              className="h-12 w-16 rounded object-cover border"
+            />
+          ) : (
+            <div className="h-12 w-16 rounded border bg-gray-50 flex items-center justify-center">
+              <ImageIcon className="h-5 w-5 text-gray-400" />
+            </div>
+          )}
+
+          <div className="min-w-0">
+            <div className="truncate font-medium">
+              {p?.name ?? (it.pieceId ? `Pièce #${it.pieceId}` : "Pièce inconnue")}
+            </div>
+            <div className="truncate text-xs text-gray-500">
+              UID: {p?.uniqueId ?? "—"}{p?.status ? ` • ${p.status}` : ""}
+            </div>
+          </div>
+        </div>
+
+        <div className="shrink-0 text-sm font-medium">
+          {it.price != null && it.price !== "" ? `${it.price} €` : (p?.price != null ? `${p.price} €` : "—")}
+        </div>
+      </li>
+    );
+  })}
+</ul>
+
       )}
     </div>
   );

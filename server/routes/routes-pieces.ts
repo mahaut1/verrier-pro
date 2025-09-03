@@ -141,40 +141,32 @@ export function registerPieceRoutes(app: ExpressApp, requireAuth: RequestHandler
     })
   );
 
-  // UPDATE (PATCH)
-  app.patch(
-    "/api/pieces/:id",
-    requireAuth,
-    handleAsync(async (req, res) => {
-      const p = idParam.safeParse(req.params);
-      if (!p.success) {
-        return res
-          .status(400)
-          .json({ message: "Paramètres invalides", errors: p.error.issues });
-      }
-     const body = updatePieceSchema.safeParse(req.body);
-      if (!body.success) {
-        return res
-          .status(400)
-          .json({ message: "Données invalides", errors: body.error.issues });
-      }
+// UPDATE (PATCH)
+app.patch(
+  "/api/pieces/:id",
+  requireAuth,
+  handleAsync(async (req, res) => {
+    const p = idParam.safeParse(req.params);
+    if (!p.success) {
+      return res.status(400).json({ message: "Paramètres invalides", errors: p.error.issues });
+    }
+    const body = updatePieceSchema.safeParse(req.body); // insertPieceSchema.partial()
+    if (!body.success) {
+      return res.status(400).json({ message: "Données invalides", errors: body.error.issues });
+    }
+    const patch = body.data as PiecePatch;
+    const hasStatus    = Object.prototype.hasOwnProperty.call(patch, "status");
+    const hasGalleryId = Object.prototype.hasOwnProperty.call(patch, "galleryId");
+    const nextPatch: PiecePatch = { ...patch };
+    if (!hasStatus && hasGalleryId) {
+      nextPatch.status = patch.galleryId ? "gallery" : "workshop";
+    }
+    const row = await storage.updatePiece(req.session.userId!, p.data.id, nextPatch);
+    if (!row) return res.status(404).json({ message: "Pièce introuvable" });
+    return res.json(row);
+  })
+);
 
-        const patch = body.data as PiecePatch;
-      const nextPatch: PiecePatch = { ...patch };
-
-      if ("galleryId" in patch) {
-        nextPatch.status = patch.galleryId ? "gallery" : "workshop";
-      }
-
-      const row = await storage.updatePiece(
-        req.session.userId!,
-        p.data.id,
-         nextPatch    
-          );
-      if (!row) return res.status(404).json({ message: "Pièce introuvable" });
-      return res.json(row);
-    })
-  );
 
   // DELETE
   app.delete(

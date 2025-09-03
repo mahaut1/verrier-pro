@@ -22,10 +22,7 @@ export default function ImageUpload({
 
   // preview temporaire
   React.useEffect(() => {
-    if (!file) {
-      setPreviewUrl(null);
-      return;
-    }
+    if (!file) { setPreviewUrl(null); return; }
     const url = URL.createObjectURL(file);
     setPreviewUrl(url);
     return () => URL.revokeObjectURL(url);
@@ -41,9 +38,7 @@ export default function ImageUpload({
     setIsSending(true);
     try {
       const fd = new FormData();
-      // on envoie sous deux clés pour couvrir l’API
       fd.append("image", file, file.name);
-      fd.append("file", file, file.name);
 
       const res = await fetch(`/api/pieces/${pieceId}/image`, {
         method: "POST",
@@ -53,14 +48,10 @@ export default function ImageUpload({
 
       if (!res.ok) {
         let msg = `Upload failed (${res.status})`;
-        try {
-          const err = await res.json();
-          msg = err?.message || msg;
-        } catch {}
+        try { msg = (await res.json())?.message || msg; } catch {}
         throw new Error(msg);
       }
 
-      // certaines routes renvoient 204, d’autres un JSON
       let imageUrl: string | null = null;
       const ct = res.headers.get("content-type") || "";
       if (ct.includes("application/json")) {
@@ -74,11 +65,11 @@ export default function ImageUpload({
       }
       onImageUploaded?.(imageUrl);
       setFile(null);
+      if (fileRef.current) fileRef.current.value = "";
     } catch (e: any) {
       alert(e?.message || "Échec du téléversement");
     } finally {
       setIsSending(false);
-      if (fileRef.current) fileRef.current.value = "";
     }
   }
 
@@ -91,13 +82,9 @@ export default function ImageUpload({
       });
       if (!res.ok) {
         let msg = `Delete failed (${res.status})`;
-        try {
-          const err = await res.json();
-          msg = err?.message || msg;
-        } catch {}
+        try { msg = (await res.json())?.message || msg; } catch {}
         throw new Error(msg);
       }
-      // 204 → pas de JSON, on force null
       onImageUploaded?.(null);
       setFile(null);
     } catch (e: any) {
@@ -119,12 +106,7 @@ export default function ImageUpload({
           disabled={disabled || isSending}
         />
 
-        <Button
-          type="button"
-          variant="outline"
-          onClick={openPicker}
-          disabled={disabled || isSending}
-        >
+        <Button type="button" variant="outline" onClick={openPicker} disabled={disabled || isSending}>
           Choisir un fichier
         </Button>
 
@@ -132,21 +114,12 @@ export default function ImageUpload({
           {file ? file.name : "Aucun fichier sélectionné"}
         </div>
 
-        <Button
-          type="button"
-          onClick={handleUpload}
-          disabled={!file || disabled || isSending}
-        >
+        <Button type="button" onClick={handleUpload} disabled={!file || disabled || isSending}>
           {isSending ? "Téléversement…" : "Téléverser"}
         </Button>
 
         {currentImageUrl ? (
-          <Button
-            type="button"
-            variant="destructive"
-            onClick={handleDelete}
-            disabled={disabled || isSending}
-          >
+          <Button type="button" variant="destructive" onClick={handleDelete} disabled={disabled || isSending}>
             Supprimer
           </Button>
         ) : null}
