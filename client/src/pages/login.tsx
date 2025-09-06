@@ -5,14 +5,13 @@ import { Input } from "../components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Label } from "../components/ui/label";
 import { useToast } from "../hooks/useToast";
-import { apiRequest } from "../lib/queryClient";
 import { useAuth } from "../hooks/useAuth";
-import { useQueryClient } from "@tanstack/react-query";
 
 export default function Login() {
   const { toast } = useToast();
   const navigate = useNavigate();
-    const queryClient = useQueryClient();
+  const { login, refetchAuth } = useAuth();
+
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({ username: "", password: "" });
 
@@ -20,18 +19,17 @@ export default function Login() {
     e.preventDefault();
     setIsLoading(true);
     try {
-      await apiRequest("POST", "/api/login", formData);
-            await queryClient.invalidateQueries({ queryKey: ["auth", "user"] });
+      await login(formData.username, formData.password); // ↙ utilise le hook
+      await refetchAuth();
+
       toast({ title: "Connexion réussie", description: "Bienvenue sur VerrierPro" });
-      // Idéal: ton hook useAuth refetchera l'état; sinon décommente la ligne reload
-      // window.location.reload();
       navigate("/", { replace: true });
-    } catch (error: any) {
-      toast({
-        title: "Erreur de connexion",
-        description: error.message || "Identifiants invalides",
-        variant: "destructive",
-      });
+    } catch (err: unknown) {
+      const message =
+        typeof err === "object" && err !== null && "message" in err
+          ? String((err as { message?: string }).message)
+          : "Identifiants invalides";
+      toast({ title: "Erreur de connexion", description: message, variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
@@ -74,10 +72,7 @@ export default function Login() {
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">
               Pas encore de compte ?{" "}
-              <button
-                onClick={() => navigate("/register")}
-                className="font-medium text-blue-600 hover:text-blue-500"
-              >
+              <button onClick={() => navigate("/register")} className="font-medium text-blue-600 hover:text-blue-500">
                 S'inscrire
               </button>
             </p>

@@ -14,6 +14,7 @@ import {registerOrderItemRoutes} from "./routes-order-items.js"
 import { registerR2ProxyRoutes } from './routes-r2-proxy.js';
 import { registerEventPieceRoutes } from './routes-events-pieces.js';
 import { registerEventRoutes } from './routes-events.js';
+import { registerDashboardRoutes } from './routes-dashboard.js';
 
 const MemStore = MemoryStore(session);
 
@@ -78,6 +79,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerR2ProxyRoutes(app, requireAuth);
   registerEventPieceRoutes(app, requireAuth);
   registerEventRoutes(app, requireAuth);
+  registerDashboardRoutes(app, requireAuth);
 
   app.get('/api/health', (_req, res) => res.json({ ok: true }));
   
