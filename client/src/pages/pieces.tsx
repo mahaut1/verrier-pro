@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -79,14 +79,19 @@ const { data: pieces = [], isLoading } = useQuery<PieceWithType[]>({
     },
   });
 
-const { data: galleries = [] } = useQuery({
-  queryKey: ["/api/galleries"],
-  queryFn: async () => {
-    const res = await fetch("/api/galleries", { credentials: "include" });
-    if (!res.ok) return [];
-    return res.json();
-  },
-});
+  // Map id -> name pour afficher/filtrer par nom de type même sans join côté backend
+  const typeNameById = useMemo<Record<string, string>>(
+    () =>
+      (Array.isArray(pieceTypes) ? pieceTypes : []).reduce(
+        (acc, t) => {
+          acc[String(t.id)] = t.name;
+          return acc;
+        },
+        {} as Record<string, string>
+      ),
+    [pieceTypes]
+  );
+
 
   const deletePieceMutation = useMutation({
     mutationFn: async (id: number) => {
@@ -110,23 +115,35 @@ const { data: galleries = [] } = useQuery({
   });
 
 
-  const filteredPieces = Array.isArray(pieces)
-    ? pieces.filter((piece) => {
-        const typeName = piece.pieceType?.name ?? "";
-        const matchesSearch =
-          piece.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          typeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          piece.description?.toLowerCase().includes(searchQuery.toLowerCase());
+const filteredPieces = useMemo(
+    () =>
+      Array.isArray(pieces)
+        ? pieces.filter((piece) => {
+            const typeName =
+              typeNameById[String(piece.pieceTypeId ?? "")] ??
+              (piece as any).pieceType?.name ??
+              "";
 
-        const matchesStatus = statusFilter === "all" || piece.status === statusFilter;
+            const matchesSearch =
+              piece.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              typeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              (piece.description ?? "")
+                .toLowerCase()
+                .includes(searchQuery.toLowerCase());
 
-        const matchesType =
-          typeFilter === "all" ||
-          String(piece.pieceType?.id ?? "") === typeFilter;
+            const matchesStatus =
+              statusFilter === "all" || piece.status === statusFilter;
 
-        return matchesSearch && matchesStatus && matchesType;
-      })
-    : [];
+            const matchesType =
+              typeFilter === "all" ||
+              String(piece.pieceTypeId ?? "") === typeFilter;
+
+            return matchesSearch && matchesStatus && matchesType;
+          })
+        : [],
+    [pieces, typeNameById, searchQuery, statusFilter, typeFilter]
+  );
+
 
   if (isLoading) {
     return (
@@ -250,94 +267,115 @@ const { data: galleries = [] } = useQuery({
           </Card>
         </div>
 
-        {/* Grille des pièces */}
+    {/* Grille des pièces */}
         <div className="mt-8">
           {filteredPieces.length === 0 ? (
             <div className="text-center py-12">
               <Box className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">Aucune pièce</h3>
+              <h3 className="mt-2 text-sm font-medium text-gray-900">
+                Aucune pièce
+              </h3>
               <p className="mt-1 text-sm text-gray-500">
                 Commencez par créer votre première pièce.
               </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {filteredPieces.map((piece: PieceWithType) => (
-                <Card key={piece.id} className="overflow-hidden">
-                  <CardContent className="p-0">
-                    {piece.imageUrl && (
-                      <div className="aspect-w-16 aspect-h-9">
-                        <img
-                          key={piece.imageUrl}
-                          src={resolveImageUrl(piece.imageUrl)}
-                          alt={piece.name}
-                          className="w-full h-48 object-cover"
-                          loading="lazy"
-                          onError={() => console.error("Image KO:", piece.imageUrl)}
-                        />
-                      </div>
-                    )}
-                    <div className="p-6">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-lg font-medium text-gray-900 truncate">
-                          {piece.name}
-                        </h3>
-                        <Badge className={getStatusColor(piece.status)}>
-                          {getStatusLabel(piece.status)}
-                        </Badge>
-                      </div>
-                      <p className="text-sm text-gray-500 mt-1">{piece.pieceType?.name ?? "—"}</p>
-                      {piece.description && (
-                        <p className="text-sm text-gray-600 mt-2 line-clamp-2">
-                          {piece.description}
-                        </p>
-                      )}
-                      <div className="mt-4 space-y-2">
-                        {piece.dimensions && (
-                          <div className="flex items-center text-xs text-gray-500">
-                            <Box className="h-3 w-3 mr-1" />
-                            {piece.dimensions}
-                          </div>
-                        )}
-                        {piece.currentLocation && (
-                          <div className="flex items-center text-xs text-gray-500">
-                            <MapPin className="h-3 w-3 mr-1" />
-                            {piece.currentLocation}
-                          </div>
-                        )}
-                        <div className="flex items-center text-xs text-gray-500">
-                          <Calendar className="h-3 w-3 mr-1" />
-                          {new Date(piece.createdAt || '').toLocaleDateString()}
+              {filteredPieces.map((piece) => {
+                const typeName =
+                  typeNameById[String(piece.pieceTypeId ?? "")] ?? "—";
+                const createdLabel = piece.createdAt
+                  ? new Date(piece.createdAt).toLocaleDateString("fr-FR")
+                  : "—";
+
+                return (
+                  <Card key={piece.id} className="overflow-hidden">
+                    <CardContent className="p-0">
+                      {piece.imageUrl && (
+                        <div className="aspect-w-16 aspect-h-9">
+                          <img
+                            key={piece.imageUrl}
+                            src={resolveImageUrl(piece.imageUrl)}
+                            alt={piece.name}
+                            className="w-full h-48 object-cover"
+                            loading="lazy"
+                            onError={() =>
+                              console.error("Image KO:", piece.imageUrl)
+                            }
+                          />
                         </div>
-                        {piece.price && (
-                          <div className="text-sm font-semibold text-gray-900">
-                            {piece.price}€
-                          </div>
+                      )}
+
+                      <div className="p-6">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-lg font-medium text-gray-900 truncate">
+                            {piece.name}
+                          </h3>
+                          <Badge className={getStatusColor(piece.status)}>
+                            {getStatusLabel(piece.status)}
+                          </Badge>
+                        </div>
+
+                        <p className="text-sm text-gray-500 mt-1">{typeName}</p>
+
+                        {piece.description && (
+                          <p className="text-sm text-gray-600 mt-2 line-clamp-2">
+                            {piece.description}
+                          </p>
                         )}
-                      </div>
-                      <div className="mt-4 flex space-x-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="flex-1 border-blue-600 text-blue-600 hover:bg-blue-50"
-                          onClick={() => setEditPiece(piece)}
-                        >
-                          <Edit className="h-4 w-4 mr-1" />
-                          Modifier
-                        </Button>
-                        <Button
-                          size="sm"
+
+                        <div className="mt-4 space-y-2">
+                          {piece.dimensions && (
+                            <div className="flex items-center text-xs text-gray-500">
+                              <Box className="h-3 w-3 mr-1" />
+                              {piece.dimensions}
+                            </div>
+                          )}
+
+                          {piece.currentLocation && (
+                            <div className="flex items-center text-xs text-gray-500">
+                              <MapPin className="h-3 w-3 mr-1" />
+                              {piece.currentLocation}
+                            </div>
+                          )}
+
+                          <div className="flex items-center text-xs text-gray-500">
+                            <Calendar className="h-3 w-3 mr-1" />
+                            {createdLabel}
+                          </div>
+
+                          {piece.price && (
+                            <div className="text-sm font-semibold text-gray-900">
+                              {piece.price}€
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="mt-4 flex space-x-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="flex-1 border-blue-600 text-blue-600 hover:bg-blue-50"
+                            onClick={() => setEditPiece(piece)}
+                          >
+                            <Edit className="h-4 w-4 mr-1" />
+                            Modifier
+                          </Button>
+
+                          <Button
+                            size="sm"
                             className="border-red-600 text-red-600 hover:bg-red-50"
-                          variant="outline"
-                          onClick={() => deletePieceMutation.mutate(piece.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                            variant="outline"
+                            onClick={() => deletePieceMutation.mutate(piece.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           )}
         </div>
