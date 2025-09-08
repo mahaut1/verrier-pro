@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
@@ -45,7 +45,7 @@ export default function Login() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <Label htmlFor="username">Nom d'utilisateur</Label>
+              <Label htmlFor="username">Email ou nom d'utilisateur</Label>
               <Input
                 id="username"
                 type="text"
@@ -64,6 +64,10 @@ export default function Login() {
                 required
               />
             </div>
+               <Button variant="link" className="p-0 h-auto" asChild>
+                 <Link to="/forgot-password">Mot de passe oublié ?</Link>
+                </Button>
+
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? "Connexion..." : "Se connecter"}
             </Button>

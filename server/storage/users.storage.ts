@@ -1,6 +1,6 @@
 import { db } from "../db.js";
 import * as schema from "../../shared/schema.js";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import type { Role } from "../../shared/schema.js"; 
 import { StorageBase, memory, User } from "./storage.base.js";
 
@@ -31,6 +31,22 @@ function mapDbUser(r: DBUserRow): User {
 }
 
 export class UsersStorage extends StorageBase {
+
+    async getUserByEmail(email: string): Promise<User | null> {
+    const norm = email.trim().toLowerCase();
+    if (this.useDatabase) {
+      await this.assertDbOrFallback("getUserByEmail");
+      const rows = await db
+        .select()
+        .from(schema.users)
+        .where(sql`lower(${schema.users.email}) = ${norm}`)
+        .limit(1);
+      const r = rows[0];
+      return r ? mapDbUser(r) : null;
+    }
+    return memory.users.find((u) => u.email.toLowerCase() === norm) ?? null;
+  }
+
   async getUserByUsername(username: string): Promise<User | null> {
     console.log("🔍 GetUserByUsername - useDatabase:", this.useDatabase);
     if (this.useDatabase) {
@@ -80,14 +96,14 @@ export class UsersStorage extends StorageBase {
 
     const safe: Required<CreateUserInput> = {
       username: input.username,
-      email: input.email,
+      email: input.email.trim().toLowerCase(),
       firstName: input.firstName ?? "",
       lastName: input.lastName ?? "",
       role: input.role ?? "artisan",
       password: input.password ?? "",
     };
 
-    if (this.useDatabase) {
+      if (this.useDatabase) {
       const toInsert: DBUserInsert = {
         username: safe.username,
         email: safe.email,
@@ -97,14 +113,28 @@ export class UsersStorage extends StorageBase {
         password: safe.password,
       };
 
-      const inserted = await db.insert(schema.users).values(toInsert).returning();
-      const r = inserted[0];
-      if (!r) throw new Error("Insertion utilisateur échouée");
-
-      const user = mapDbUser(r);
-      console.log("✅ *** USER CREATED IN DB ***:", user.id, user.username);
-      return user;
+      try {
+        const inserted = await db.insert(schema.users).values(toInsert).returning();
+        const r = inserted[0];
+        if (!r) throw new Error("Insertion utilisateur échouée");
+        return mapDbUser(r);
+      } catch (err: any) {
+        const code = err?.code ?? err?.cause?.code;
+        const constraint = err?.constraint ?? err?.cause?.constraint ?? "";
+        if (code === "23505") {
+          const out: any = new Error(
+            constraint.includes("email") ? "email already exists" :
+            constraint.includes("username") ? "username already exists" :
+            "unique violation"
+          );
+          out.code = "23505";
+          out.constraint = constraint;
+          throw out;
+        }
+        throw err;
+      }
     }
+
 
     // Mémoire
     const nextId = memory.users.length ? Math.max(...memory.users.map((u) => u.id)) + 1 : 1;

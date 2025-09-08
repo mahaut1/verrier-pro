@@ -32,6 +32,8 @@ export function useAuth(): {
   ) => Promise<QueryObserverResult<AuthUser | null, Error>>;
   login: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  forgotPassword: (email: string) => Promise<void>;                 // ⬅️ ajouté
+  resetPassword: (token: string, newPassword: string) => Promise<void>; 
 } {
   const queryClient = useQueryClient();
 
@@ -63,6 +65,32 @@ export function useAuth(): {
     await queryClient.invalidateQueries({ queryKey: ["auth", "user"] });
   };
 
+  const forgotPassword = async (email: string) => {
+    const res = await fetch("/api/password/forgot", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    if (!res.ok) {
+      const msg = await res.text().catch(() => "");
+      throw new Error(msg || "Erreur lors de la demande de réinitialisation");
+    }
+  };
+
+  const resetPassword = async (token: string, newPassword: string) => {
+    const res = await fetch("/api/password/reset", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token, newPassword }),
+    });
+    if (!res.ok) {
+      const msg = await res.text().catch(() => "");
+      throw new Error(msg || "Réinitialisation impossible");
+    }
+  };
+
   return {
     user: data ?? null,
     isAuthenticated: !!data,
@@ -70,5 +98,9 @@ export function useAuth(): {
     refetchAuth: refetch,
     login,
     logout,
+    forgotPassword,
+    resetPassword,
   };
+  
 }
+

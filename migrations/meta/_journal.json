@@ -57,6 +57,13 @@
       "when": 1756648761340,
       "tag": "0007_loose_marvel_zombies",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1757245598164,
+      "tag": "0008_good_agent_brand",
+      "breakpoints": true
     }
   ]
 }

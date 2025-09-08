@@ -13,6 +13,8 @@ import Stocks from "./pages/stocks";
 import Orders from "./pages/orders";
 import Events from "./pages/events";
 import Dashboard from "./pages/dashboard";
+import ForgotPassword from "./pages/forgotPassword";
+import ResetPassword from "./pages/resetPassword";
 
 /**  Auto-logout après 5h d'inactivité  */
 const IDLE_TIMEOUT_MS = 5 * 60 * 60 * 1000; // 5h
@@ -158,6 +160,9 @@ export default function App() {
             }
           />
 
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+
           <Route
             path="/"
             element={
@@ -172,6 +177,7 @@ export default function App() {
             <Route path="stocks" element={<Stocks />} />
             <Route path="orders" element={<Orders />} />
             <Route path="events" element={<Events />} />
+     
 
           </Route>
 

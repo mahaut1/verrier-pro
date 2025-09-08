@@ -2,7 +2,7 @@
 import { pgTable, text, serial,boolean, timestamp, jsonb, varchar, index, integer, uniqueIndex, numeric, decimal } from "drizzle-orm/pg-core";
 import { z } from "zod";
 import { createInsertSchema } from "drizzle-zod";
-
+import { sql } from "drizzle-orm";
 export const sessions = pgTable("sessions",
   {
     sid: varchar("sid").primaryKey(),
@@ -16,12 +16,14 @@ export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
-  email: text("email").notNull().unique(),
+  email: text("email").notNull(),
   firstName: text("first_name").notNull(),
   lastName: text("last_name").notNull(),
   role: text("role").notNull().default("artisan"),
   createdAt: timestamp("created_at").defaultNow(),
-});
+ }, (t) => ({
+  emailUniqueCI: uniqueIndex("users_email_unique_ci").on(sql`lower(${t.email})`),
+}));
 
 export const galleries= pgTable("galleries",{
   id:serial('id').primaryKey(),
@@ -172,7 +174,18 @@ export const eventPieces = pgTable("event_pieces", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  tokenHash: text("token_hash").notNull(),  // SHA-256 du token
+  expiresAt: timestamp("expires_at").notNull(),
+  usedAt: timestamp("used_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (t) => [
+  index("prt_user_idx").on(t.userId),
+  index("prt_exp_idx").on(t.expiresAt),
+  uniqueIndex("prt_token_uq").on(t.tokenHash), 
+]);
 
 export const orderStatusEnum = z.enum(["pending", "processing", "shipped", "delivered", "cancelled"]);
 export type OrderStatus = z.infer<typeof orderStatusEnum>;
