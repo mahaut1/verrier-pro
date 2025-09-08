@@ -23,7 +23,7 @@ console.log("SESSION_SECRET:", process.env.SESSION_SECRET ? "CHARGÉE" : "❌ MA
 console.log("NODE_ENV:", process.env.NODE_ENV);
 
 import express, { type Request, Response, NextFunction } from "express";
-import { serveStatic, log } from "./vite.js";
+import { log } from "./vite.js";
 
 async function startServer() {
   console.log("🔍 *** IMPORT STORAGE AVANT ROUTES ***");
@@ -41,10 +41,31 @@ async function startServer() {
   app.use(express.urlencoded({ extended: false }));
 
   const server = await registerRoutes(app);
+ //  STATIC & SPA FALLBACK 
+  const publicDir = path.join(__dirname, "../public");
 
-  // En prod → uniquement les fichiers statiques
-  serveStatic(app);
+  // 1) Servir les assets (JS/CSS) 
+  app.use(
+    express.static(publicDir, {
+      index: false,
+      maxAge: isProd ? "1h" : 0,
+    })
+  );
 
+  // 2) Fallback SPA garanti pour les PAGES PUBLIQUES (sans auth)
+  app.get(["/login", "/register", "/forgot-password", "/reset-password"], (_req, res) => {
+    res.sendFile(path.join(publicDir, "index.html"));
+  });
+
+  // 3) Fallback SPA pour toutes les AUTRES routes non-API
+  app.get("*", (req, res, next) => {
+    if (req.method !== "GET") return next();
+    if (req.path.startsWith("/api/")) return next();
+    res.sendFile(path.join(publicDir, "index.html"));
+  });
+
+
+  // Error Handler 
 app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
   console.error(err);
   const status =
