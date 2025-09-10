@@ -42,6 +42,7 @@ export default function PieceEditForm({ piece, onSuccess }: PieceEditFormProps) 
       if (!res.ok) return [];
       return res.json();
     },
+     initialData: [], 
   });
 
     const { data: pieceTypes = [] } = useQuery({
@@ -52,6 +53,7 @@ export default function PieceEditForm({ piece, onSuccess }: PieceEditFormProps) 
       const data = await res.json();
       return data as { id: number; name: string }[];
     },
+     initialData: [], 
   });
 
 
@@ -158,9 +160,9 @@ export default function PieceEditForm({ piece, onSuccess }: PieceEditFormProps) 
                             <SelectValue placeholder="Sélectionner le type" />
                           </SelectTrigger>
                         </FormControl>
-                        <SelectContent>
+                      <SelectContent>
                           <SelectItem value="none">Aucun type</SelectItem>
-                          {pieceTypes.map((t) => (
+                          {(pieceTypes ?? []).map((t) => (
                             <SelectItem key={t.id} value={String(t.id)}>
                               {t.name}
                             </SelectItem>
@@ -271,14 +273,14 @@ export default function PieceEditForm({ piece, onSuccess }: PieceEditFormProps) 
                           <SelectValue placeholder="Sélectionner une galerie" />
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent>
-                        <SelectItem value="none">Aucune galerie</SelectItem>
-                        {galleries.map((g: any) => (
-                          <SelectItem key={g.id} value={g.id.toString()}>
-                            {g.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
+                  <SelectContent>
+                    <SelectItem value="none">Aucune galerie</SelectItem>
+                    {(galleries ?? []).map((g: any) => (
+                      <SelectItem key={g.id} value={g.id.toString()}>
+                        {g.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
                     </Select>
                     <FormMessage />
                   </FormItem>
