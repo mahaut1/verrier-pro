@@ -62,6 +62,7 @@ export const pieces = pgTable('pieces',{
   name: text("name").notNull(),
   uniqueId: text("unique_id").notNull(),
   pieceTypeId: integer("piece_type_id").references(() => pieceTypes.id, { onDelete: "set null" }),  dimensions: text("dimensions"),
+  pieceSubtypeId: integer("piece_subtype_id").references(() => pieceSubtypes.id, { onDelete: "set null" }),
   dominantColor: text("dominant_color"),
   description: text("description"),
   status: text("status").notNull().default("workshop"), // ✅
@@ -187,6 +188,21 @@ export const passwordResetTokens = pgTable("password_reset_tokens", {
   uniqueIndex("prt_token_uq").on(t.tokenHash), 
 ]);
 
+export const pieceSubtypes = pgTable("piece_subtypes", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  pieceTypeId: integer("piece_type_id").references(() => pieceTypes.id, { onDelete: "cascade" }).notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (t) => [
+  // un même sous-type ne peut pas être dupliqué pour (userId, pieceTypeId)
+  uniqueIndex("ux_subtypes_user_type_name").on(t.userId, t.pieceTypeId, t.name),
+  index("idx_subtypes_user_type").on(t.userId, t.pieceTypeId),
+]);
+
 export const orderStatusEnum = z.enum(["pending", "processing", "shipped", "delivered", "cancelled"]);
 export type OrderStatus = z.infer<typeof orderStatusEnum>;
 
@@ -210,6 +226,12 @@ export const updateEventSchema = insertEventSchema.partial();
 
 export type Event = typeof events.$inferSelect;
 export type InsertEvent = typeof events.$inferInsert;
+
+export const insertPieceSubtypeSchema = createInsertSchema(pieceSubtypes).omit({
+  id: true, userId: true, createdAt: true, updatedAt: true, isActive: true,
+});
+
+export const updatePieceSubtypeSchema = insertPieceSubtypeSchema.partial();
 
 export const insertEventPieceSchema = z.object({
   eventId: z.coerce.number().int().positive(),
@@ -323,3 +345,5 @@ export type OrderItem = typeof orderItems.$inferSelect;
 export type InsertOrderItem = z.infer<typeof insertOrderItemSchema>;
 export type EventPiece = typeof eventPieces.$inferSelect;
 export type InsertEventPiece = typeof eventPieces.$inferInsert;
+export type PieceSubtype = typeof pieceSubtypes.$inferSelect;
+export type InsertPieceSubtype = typeof pieceSubtypes.$inferInsert;

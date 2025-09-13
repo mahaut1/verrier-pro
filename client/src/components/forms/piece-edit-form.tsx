@@ -11,28 +11,26 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {Form,FormControl, FormField, FormItem, FormLabel, FormMessage,} from "@/components/ui/form";
-import {DialogHeader,DialogTitle,} from "@/components/ui/dialog";
+import {DialogHeader,DialogTitle, Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import ImageUpload from "@/components/ui/image-upload";
 import type { Piece } from "@shared/schema";
+import NewPieceSubtypeForm from "./new-piece-subtype-form";
 
 
 type PieceWithType = Piece & { pieceType?: { id: number; name: string } | null };
 
 const formSchema = insertPieceSchema
   .extend({ price: z.string().optional() })
-  .omit({ pieceTypeId: true }) 
+  .omit({ pieceTypeId: true, pieceSubtypeId: true }) 
   .extend({
     pieceTypeId: z.number().nullable().optional(),
+    pieceSubtypeId: z.number().nullable().optional(),
   });
 
 type FormData = z.infer<typeof formSchema>;
 
-interface PieceEditFormProps {
-  piece: PieceWithType;
-  onSuccess?: () => void;
-}
 
-export default function PieceEditForm({ piece, onSuccess }: PieceEditFormProps) {
+export default function PieceEditForm({ piece, onSuccess }: { piece: PieceWithType; onSuccess?: () => void }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -64,6 +62,7 @@ export default function PieceEditForm({ piece, onSuccess }: PieceEditFormProps) 
       name: piece.name,
       uniqueId: piece.uniqueId,
       pieceTypeId: piece.pieceType?.id ?? (piece as any).pieceTypeId ?? null,   
+      pieceSubtypeId: (piece as any).pieceSubtypeId ?? null,
       dimensions: piece.dimensions || "",
       dominantColor: piece.dominantColor || "",
       description: piece.description || "",
@@ -74,6 +73,20 @@ export default function PieceEditForm({ piece, onSuccess }: PieceEditFormProps) 
     },
   });
 
+    const typeId = form.watch("pieceTypeId") ?? null;
+
+  // sous-types du type courant
+  const { data: subtypes = [] } = useQuery({
+    queryKey: ["/api/piece-subtypes", { pieceTypeId: typeId }],
+    enabled: typeId != null,
+    queryFn: async () => {
+      const p = new URLSearchParams({ pieceTypeId: String(typeId), onlyActive: "true" });
+      const r = await fetch(`/api/piece-subtypes?${p.toString()}`, { credentials: "include" });
+      if (!r.ok) throw new Error(await r.text());
+      return (await r.json()) as Array<{ id: number; name: string }>;
+    },
+  });
+
   const updatePieceMutation = useMutation({
     mutationFn: async (data: FormData) => {
       const submitData = {
@@ -81,6 +94,7 @@ export default function PieceEditForm({ piece, onSuccess }: PieceEditFormProps) 
         price: data.price ? data.price : null,
         galleryId: data.galleryId || null,
         pieceTypeId: data.pieceTypeId ?? null,
+        pieceSubtypeId: data.pieceSubtypeId ?? null
       };
       return apiRequest("PATCH", `/api/pieces/${piece.id}`, submitData);
     },
@@ -117,9 +131,9 @@ export default function PieceEditForm({ piece, onSuccess }: PieceEditFormProps) 
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 overflow-y-auto overflow-x-hidden px-6 py-5">
-          <div className="grid gap-6 md:grid-cols-2">
+          <div className="grid gap-6 grid-cols-1 md:grid-cols-[2fr_1fr]">
             {/* Colonne gauche */}
-            <div className="space-y-4">
+            <div className=" md:col-span-2 space-y-4">
               <FormField
                 control={form.control}
                 name="name"
@@ -148,23 +162,28 @@ export default function PieceEditForm({ piece, onSuccess }: PieceEditFormProps) 
                 )}
               />
 
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {/* Type & Sous-type */}
+              <div className="grid gap-4 sm:grid-cols-2">
+                {/* Type */}
                 <FormField
                   control={form.control}
                   name="pieceTypeId"
                   render={({ field }) => (
-                    <FormItem className="col-span-1 lg:col-span-1">
+                    <FormItem className="min-w-0">
                       <FormLabel>Type</FormLabel>
                       <Select
-                        onValueChange={(val) => field.onChange(val === "none" ? null : Number(val))}
-                        defaultValue={field.value == null ? "none" : String(field.value)}
+                        value={field.value == null ? "none" : String(field.value)}
+                        onValueChange={(val) => {
+                          field.onChange(val === "none" ? null : Number(val));
+                          form.setValue("pieceSubtypeId", null, { shouldDirty: true }); // reset sous-type
+                        }}
                       >
                         <FormControl>
                           <SelectTrigger className="w-full max-w-full overflow-hidden [&>span]:truncate">
                             <SelectValue placeholder="Sélectionner le type" />
                           </SelectTrigger>
                         </FormControl>
-                      <SelectContent>
+                        <SelectContent>
                           <SelectItem value="none">Aucun type</SelectItem>
                           {(pieceTypes ?? []).map((t) => (
                             <SelectItem key={t.id} value={String(t.id)}>
@@ -178,20 +197,85 @@ export default function PieceEditForm({ piece, onSuccess }: PieceEditFormProps) 
                   )}
                 />
 
-                <FormField
-                  control={form.control}
-                  name="dominantColor"
-                  render={({ field }) => (
-                    <FormItem className="col-span-1">
-                      <FormLabel>Couleur dominante</FormLabel>
+        {/* Sous-type — bouton sous le select pour éviter tout débordement */}
+              <FormField
+                control={form.control}
+                name="pieceSubtypeId"
+                render={({ field }) => (
+                  <FormItem className="min-w-0">
+                    <FormLabel>Sous-type (optionnel)</FormLabel>
+                    <Select
+                      value={field.value == null ? "none" : String(field.value)}
+                      onValueChange={(val) => field.onChange(val === "none" ? null : Number(val))}
+                      disabled={typeId == null}
+                    >
                       <FormControl>
-                        <Input placeholder="Bleu cobalt" {...field} value={field.value ?? ""} />
+                        <SelectTrigger className="w-full max-w-full overflow-hidden [&>span]:truncate">
+                          <SelectValue
+                            placeholder={
+                              typeId == null
+                                ? "Choisir d’abord un type"
+                                : "Sélectionner un sous-type"
+                            }
+                          />
+                        </SelectTrigger>
                       </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+                      <SelectContent>
+                        <SelectItem value="none">Aucun sous-type</SelectItem>
+                        {subtypes.map((s) => (
+                          <SelectItem key={s.id} value={String(s.id)}>
+                            {s.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                 
+                    <div className="mt-2">
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={typeId == null}
+                          >
+                            + Nouveau sous-type
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-md">
+                          <NewPieceSubtypeForm
+                            defaultPieceTypeId={typeId ?? undefined}
+                            onCreated={() =>
+                              queryClient.invalidateQueries({ queryKey: ["/api/piece-subtypes"] })
+                            }
+                          />
+                        </DialogContent>
+                      </Dialog>
+                    </div>
+
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+              {/* Couleur dominante (en dessous */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="dominantColor"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Couleur dominante</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Bleu cobalt" {...field} value={field.value ?? ""} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
 
               <FormField
                 control={form.control}
@@ -206,15 +290,15 @@ export default function PieceEditForm({ piece, onSuccess }: PieceEditFormProps) 
                   </FormItem>
                 )}
               />
-
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            </div>
+              <div className="grid gap-4 sm:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="status"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Statut</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select value={field.value} onValueChange={field.onChange}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue />
@@ -248,6 +332,7 @@ export default function PieceEditForm({ piece, onSuccess }: PieceEditFormProps) 
                 />
               </div>
 
+            <div className="grid gap-4 sm:grid-cols-2">
               <FormField
                 control={form.control}
                 name="currentLocation"
@@ -290,7 +375,7 @@ export default function PieceEditForm({ piece, onSuccess }: PieceEditFormProps) 
                   </FormItem>
                 )}
               />
-
+            </div>
               <FormField
                 control={form.control}
                 name="description"

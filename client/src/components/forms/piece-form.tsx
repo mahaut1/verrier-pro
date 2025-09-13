@@ -12,14 +12,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {Form,FormControl,FormField,FormItem,FormLabel,FormMessage} from "@/components/ui/form";
 import {DialogHeader,DialogTitle, Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import NewPieceTypeForm from "./new_piece_type_form";
+import NewPieceSubtypeForm from "./new-piece-subtype-form";
 
 const formSchema = insertPieceSchema
   .extend({
     price: z.string().optional(), 
   })
-  .omit({ pieceTypeId: true })
+  .omit({ pieceTypeId: true, pieceSubtypeId: true })
   .extend({
     pieceTypeId: z.number().nullable().optional(), 
+    pieceSubtypeId: z.number().nullable().optional(),
   });
 
 
@@ -58,6 +60,7 @@ export default function PieceForm({ onSuccess }: PieceFormProps) {
       name: "",
       uniqueId: "",
       pieceTypeId: null,
+      pieceSubtypeId: null,
       dimensions: "",
       dominantColor: "",
       description: "",
@@ -67,6 +70,19 @@ export default function PieceForm({ onSuccess }: PieceFormProps) {
     },
   });
 
+    const typeId = form.watch("pieceTypeId") ?? null;
+
+  // sous-types filtrés par le type
+  const { data: subtypes = [] } = useQuery({
+    queryKey: ["/api/piece-subtypes", { pieceTypeId: typeId }],
+    enabled: typeId != null,
+    queryFn: async () => {
+      const p = new URLSearchParams({ pieceTypeId: String(typeId), onlyActive: "true" });
+      const r = await fetch(`/api/piece-subtypes?${p.toString()}`, { credentials: "include" });
+      if (!r.ok) throw new Error(await r.text());
+      return (await r.json()) as Array<{ id: number; name: string }>;
+    },
+  });
 
   const createPieceMutation = useMutation({
     mutationFn: async (data: FormData) => {
@@ -75,6 +91,7 @@ export default function PieceForm({ onSuccess }: PieceFormProps) {
         price: data.price ? data.price : null,
         galleryId: data.galleryId || null,
         pieceTypeId: data.pieceTypeId ?? null,
+        pieceSubtypeId: data.pieceSubtypeId ?? null,
       };
       return apiRequest("POST", "/api/pieces", submitData);
     },
@@ -99,11 +116,14 @@ export default function PieceForm({ onSuccess }: PieceFormProps) {
 
   return (
     <>
-      <DialogHeader>
+      <div className="flex max-h-[85vh] flex-col overflow-hidden"></div>
+      <DialogHeader className="sticky top-0 z-10 border-b bg-white/80 px-6 py-4 backdrop-blur supports-[backdrop-filter]:bg-white/60">
         <DialogTitle>Créer une nouvelle pièce</DialogTitle>
       </DialogHeader>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 overflow-y-auto overflow-x-hidden px-6 py-5">
+
+         <div className="grid gap-4 sm:grid-cols-2">
           <FormField
             control={form.control}
             name="name"
@@ -131,13 +151,16 @@ export default function PieceForm({ onSuccess }: PieceFormProps) {
               </FormItem>
             )}
           />
+        </div>
 
-       <div className="grid grid-cols-2 gap-4">
+{/* Type & Sous-type */}
+          <div className="mt-2 grid gap-4 sm:grid-cols-2">
+            {/* Type */}
             <FormField
               control={form.control}
               name="pieceTypeId"
               render={({ field }) => (
-                <FormItem>
+                <FormItem  className="min-w-0">
                   <div className="flex items-center justify-between">
                     <FormLabel>Type</FormLabel>
                     <Dialog>
@@ -149,21 +172,24 @@ export default function PieceForm({ onSuccess }: PieceFormProps) {
                           queryClient.invalidateQueries({ queryKey: ["/api/piece-types"] });
                         }} />
                       </DialogContent>
-                    </Dialog> 
+                    </Dialog>
                   </div>
                   <Select
-                    onValueChange={(val) => field.onChange(val === "none" ? null : Number(val))}
-                    defaultValue={field.value == null ? "none" : String(field.value)}
+                    value={field.value == null ? "none" : String(field.value)}
+                    onValueChange={(val) => {
+                      field.onChange(val === "none" ? null : Number(val));
+                      form.setValue("pieceSubtypeId", null, { shouldDirty: true }); // reset sous-type
+                    }}
                   >
                     <FormControl>
-                      <SelectTrigger>
+                      <SelectTrigger className="w-full max-w-full overflow-hidden [&>span]:truncate">
                         <SelectValue placeholder="Sélectionner le type" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
                       <SelectItem value="none">Aucun type</SelectItem>
                       {pieceTypes.map((t: any) => (
-                        <SelectItem key={t.id} value={String(t.id)}>
+                        <SelectItem key={t.id} value={String(t.id)} title={t.name}>
                           {t.name}
                         </SelectItem>
                       ))}
@@ -174,7 +200,58 @@ export default function PieceForm({ onSuccess }: PieceFormProps) {
               )}
             />
 
+            {/* Sous-type */}
+            <FormField
+              control={form.control}
+              name="pieceSubtypeId"
+              render={({ field }) => (
+                <FormItem className="min-w-0">
+                  <div className="flex items-center justify-between">
+                    <FormLabel>Sous-type (optionnel)</FormLabel>
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button type="button" size="sm" variant="outline" disabled={typeId == null}>
+                          + Nouveau sous-type
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-md">
+                        <NewPieceSubtypeForm
+                          defaultPieceTypeId={typeId ?? undefined}
+                          onCreated={() => {
+                            queryClient.invalidateQueries({ queryKey: ["/api/piece-subtypes"] });
+                          }}
+                        />
+                      </DialogContent>
+                    </Dialog>
+                  </div>
 
+                  <Select
+                    value={field.value == null ? "none" : String(field.value)}
+                    onValueChange={(val) => field.onChange(val === "none" ? null : Number(val))}
+                    disabled={typeId == null}
+                  >
+                    <FormControl>
+                      <SelectTrigger className="w-full max-w-full overflow-hidden [&>span]:truncate">
+                        <SelectValue placeholder={typeId == null ? "Choisir d’abord un type" : "Sélectionner un sous-type"} />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="none">Aucun sous-type</SelectItem>
+                      {subtypes.map((s) => (
+                        <SelectItem key={s.id} value={String(s.id)} title={s.name}>
+                          {s.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+
+          <div className="mt-2 grid gap-4 sm:grid-cols-2">
             <FormField
               control={form.control}
               name="dominantColor"
@@ -188,7 +265,7 @@ export default function PieceForm({ onSuccess }: PieceFormProps) {
                 </FormItem>
               )}
             />
-          </div>
+      
 
           <FormField
             control={form.control}
@@ -203,8 +280,9 @@ export default function PieceForm({ onSuccess }: PieceFormProps) {
               </FormItem>
             )}
           />
+          </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="mt-2 grid gap-4 sm:grid-cols-2">
             <FormField
               control={form.control}
               name="status"
@@ -289,6 +367,7 @@ export default function PieceForm({ onSuccess }: PieceFormProps) {
             )}
           />
 
+         <div className="sticky bottom-0 mt-6 -mx-6 border-t bg-white/80 px-6 py-3 backdrop-blur supports-[backdrop-filter]:bg-white/60"></div>
           <div className="flex justify-end space-x-2">
             <Button
               type="button"

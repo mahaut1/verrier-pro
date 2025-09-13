@@ -9,6 +9,7 @@ import { OrdersStorage } from "./orders.storage.js";
 import { OrderItemsStorage } from "./order-items.storage.js";
 import { EventsStorage } from "./events.storage.js";
 import { EventPiecesStorage } from "./event-pieces.storage.js";
+import { PieceSubtypesStorage } from "./piece-subtypes.storage.js";
 
 const users = new UsersStorage();
 const pieces = new PiecesStorage();
@@ -20,6 +21,7 @@ const orders = new OrdersStorage();
 const orderItems = new OrderItemsStorage();
 const events = new EventsStorage();
 const eventPiecesStore = new EventPiecesStorage();
+const pieceSubtypes = new PieceSubtypesStorage();
 
 export const storage = {
   // USERS
@@ -73,6 +75,17 @@ export const storage = {
   deletePieceType: (userId: number, id: number) =>
     pieceTypes.deletePieceType(userId, id),
 
+  // PIECE SUBTYPES
+  createPieceSubtype: (...a: Parameters<PieceSubtypesStorage["createPieceSubtype"]>) =>
+    pieceSubtypes.createPieceSubtype(...a),
+  listPieceSubtypes: (...a: Parameters<PieceSubtypesStorage["listPieceSubtypes"]>) =>
+    pieceSubtypes.listPieceSubtypes(...a),
+  getPieceSubtypeById: (...a: Parameters<PieceSubtypesStorage["getPieceSubtypeById"]>) =>
+    pieceSubtypes.getPieceSubtypeById(...a),
+  updatePieceSubtype: (...a: Parameters<PieceSubtypesStorage["updatePieceSubtype"]>) =>
+    pieceSubtypes.updatePieceSubtype(...a),
+  deletePieceSubtype: (...a: Parameters<PieceSubtypesStorage["deletePieceSubtype"]>) =>
+    pieceSubtypes.deletePieceSubtype(...a),  
 
    //STOCK
 // ITEMS
@@ -141,5 +154,5 @@ deleteEventPiece: (...a: Parameters<EventPiecesStorage["deleteEventPiece"]>) => 
 
 
 
-export { users, pieces, galleries, pieceTypes, stockItems, stockMovements, orders, orderItems, events, eventPiecesStore }; 
+export { users, pieces, galleries, pieceTypes, pieceSubtypes, stockItems, stockMovements, orders, orderItems, events, eventPiecesStore }; 
 export type AppStorage = typeof storage;

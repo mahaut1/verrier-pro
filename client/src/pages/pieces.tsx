@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -10,7 +10,7 @@ import { Plus, Search, Box, MapPin, Calendar, Edit, Trash2 } from "lucide-react"
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "../hooks/useToast";
 import { apiRequest } from "../lib/queryClient";
-import type { Piece, Gallery } from "@shared/schema";
+import type { Piece } from "@shared/schema";
 import PieceForm from "../components/forms/piece-form";
 import PieceEditForm from "../components/forms/piece-edit-form";
 import NewPieceTypeForm from "../components/forms/new_piece_type_form";
@@ -56,6 +56,7 @@ export default function Pieces() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [subtypeFilter, setSubtypeFilter] = useState<string>("all");
   const [openDialog, setOpenDialog] = useState(false);
   const [editPiece, setEditPiece] = useState<PieceWithType | null>(null);
   const { toast } = useToast();
@@ -92,6 +93,21 @@ const { data: pieces = [], isLoading } = useQuery<PieceWithType[]>({
     [pieceTypes]
   );
 
+  const { data: subtypeOptions = [] } = useQuery({
+  queryKey: ["/api/piece-subtypes", { pieceTypeId: typeFilter }],
+  enabled: typeFilter !== "all",
+  queryFn: async () => {
+    const params = new URLSearchParams({
+      onlyActive: "true",
+      pieceTypeId: String(typeFilter),
+    });
+    const r = await fetch(`/api/piece-subtypes?${params.toString()}`, {
+      credentials: "include",
+    });
+    if (!r.ok) throw new Error(await r.text());
+    return (await r.json()) as Array<{ id: number; name: string }>;
+  },
+});
 
   const deletePieceMutation = useMutation({
     mutationFn: async (id: number) => {
@@ -141,7 +157,7 @@ const filteredPieces = useMemo(
             return matchesSearch && matchesStatus && matchesType;
           })
         : [],
-    [pieces, typeNameById, searchQuery, statusFilter, typeFilter]
+    [pieces, typeNameById, searchQuery, statusFilter, typeFilter, subtypeFilter]
   );
 
 
@@ -183,6 +199,7 @@ const filteredPieces = useMemo(
                 <NewPieceTypeForm />
               </DialogContent>
             </Dialog> 
+            
             <Dialog open={openDialog} onOpenChange={setOpenDialog}>
               <DialogTrigger asChild>
                 <Button>
@@ -190,7 +207,7 @@ const filteredPieces = useMemo(
                   Nouvelle pièce
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl">
+              <DialogContent className="max-w-2xl p-0 max-h-[85vh] overflow-hidden">
                 <PieceForm onSuccess={() => setOpenDialog(false)} />
               </DialogContent>
             </Dialog>
@@ -211,7 +228,8 @@ const filteredPieces = useMemo(
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
+
+          <Select value={statusFilter} onValueChange={setTypeFilter}>
             <SelectTrigger>
               <SelectValue placeholder="Statut" />
             </SelectTrigger>
@@ -225,7 +243,13 @@ const filteredPieces = useMemo(
             </SelectContent>
           </Select>
           
-          <Select value={typeFilter} onValueChange={setTypeFilter}>
+          <Select
+           value={typeFilter} 
+           onValueChange={(v) => {
+              setTypeFilter(v);
+              setSubtypeFilter("all"); 
+            }}>
+
             <SelectTrigger>
               <SelectValue placeholder="Type" />
             </SelectTrigger>
@@ -242,6 +266,27 @@ const filteredPieces = useMemo(
               )}
             </SelectContent>
           </Select>
+    
+
+          <Select
+          value={subtypeFilter}
+          onValueChange={setSubtypeFilter}
+          disabled={typeFilter === "all"}
+        >
+          <SelectTrigger>
+            <SelectValue
+              placeholder={typeFilter === "all" ? "Choisir un type d’abord" : "Sous-type"}
+            />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tous les sous-types</SelectItem>
+            {subtypeOptions.map((s) => (
+              <SelectItem key={s.id} value={String(s.id)}>
+                {s.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         </div>
 
         {/* Statistiques */}

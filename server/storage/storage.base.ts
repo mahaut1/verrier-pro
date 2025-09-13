@@ -43,7 +43,8 @@ export interface MemoryPiece {
   userId: number;
   name: string;
   uniqueId: string;
-  pieceTypeId: number | null;           
+  pieceTypeId: number | null;  
+  pieceSubtypeId: number | null;        
   dimensions: string | null;
   dominantColor: string | null;
   description: string | null;
@@ -112,6 +113,17 @@ export type PieceListQuery = {
   galleryId?: number;
 };
 
+export type MemoryPieceSubtype = {
+  id: number;
+  userId: number;
+  pieceTypeId: number;
+  name: string;
+  description: string | null;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
 export const memory = {
   users: [] as User[],
   galleries: [] as MemoryGallery[],
@@ -120,7 +132,8 @@ export const memory = {
     stockItems: [] as MemoryStockItem[],        
   stockMovements: [] as MemoryStockMovement[],
    orders: [] as MemoryOrder[],
-  orderItems: [] as MemoryOrderItem[]
+  orderItems: [] as MemoryOrderItem[],
+  pieceSubtypes: [] as MemoryPieceSubtype[],
 };
 
 
