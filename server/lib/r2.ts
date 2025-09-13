@@ -78,26 +78,39 @@ export function makePieceKey(params: {
   return `pieces/${params.userId}/${params.pieceId}-${ts}-${safe}`;
 }
 
-function isAbsoluteUrl(s: string): boolean {
-  return /^https?:\/\//i.test(s);
-}
+
 
 
 export function keyFromPublicUrl(input: string): string {
   if (!input) return input;
-  if (!isAbsoluteUrl(input)) return input.replace(/^https?:\/\/[^/]+\/+/, "");
-  try {
-    const u = new URL(input);
-    let path = u.pathname.replace(/^\/+/, "");
-    if (u.hostname.endsWith(".r2.cloudflarestorage.com")) {
-      const segs = path.split("/");
-      if (segs[0] && segs[0] === R2_BUCKET_NAME) segs.shift();
-      return segs.join("/");
-    }
-    return path; 
-  } catch {
-    return input.replace(/^https?:\/\/[^/]+\/+/, "");
+  const url = input.trim();
+  if (url.startsWith("/uploads/")) return "";
+  if (url.startsWith("/api/images/")) {
+    const key = decodeURIComponent(url.slice("/api/images/".length));
+    return key.replace(/^\/+/, "");
   }
+  const m = url.match(/\/api\/r2\/object\/([A-Za-z0-9\-_]+)/);
+  if (m) {
+    const b64 = m[1].replace(/-/g, "+").replace(/_/g, "/");
+    const pad = b64.length % 4 ? 4 - (b64.length % 4) : 0;
+    const decoded = Buffer.from(b64 + "=".repeat(pad), "base64").toString("utf8");
+    return decoded.replace(/^\/+/, "");
+  }
+  if (/^https?:\/\//i.test(url)) {
+    try {
+      const u = new URL(url);
+      let path = u.pathname.replace(/^\/+/, "");
+      if (u.hostname.endsWith(".r2.cloudflarestorage.com")) {
+        const segs = path.split("/");
+        if (segs[0] && segs[0] === R2_BUCKET_NAME) segs.shift();
+        path = segs.join("/");
+      }
+      return path;
+    } catch {
+      return url.replace(/^https?:\/\/[^/]+\/+/, "");
+    }
+  }
+  return url.replace(/^\/+/, "");
 }
 
 

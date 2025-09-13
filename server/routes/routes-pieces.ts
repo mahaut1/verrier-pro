@@ -215,41 +215,75 @@ app.post(
   
 
   // DELETE image
-app.delete(
+app.delete("/api/pieces/:id/image", requireAuth, async (req, res) => {
+  const parsed = idParam.safeParse(req.params);
+  if (!parsed.success) return res.status(400).json({ message: "Paramètres invalides", errors: parsed.error.issues });
+  const userId = req.session.userId!;
+  const pieceId = parsed.data.id;
+  const piece = await storage.getPieceById(userId, pieceId);
+  if (!piece) return res.status(404).json({ message: "Pièce introuvable" });
+  if (piece.imageUrl && R2_AVAILABLE) {
+    const key = keyFromPublicUrl(piece.imageUrl);
+    if (key) {
+      try {
+        await r2DeleteObject(key);
+      } catch (e) {
+        console.warn("⚠️ R2 delete failed:", key, e);
+      }
+    }
+  }
+  const updated = await storage.clearPieceImage(userId, pieceId);
+  if (!updated) return res.status(404).json({ message: "Pièce introuvable" });
+  updated.imageUrl = null;
+  return res.json(updated);
+});
+
+// REPLACE image (upload + suppression de l'ancienne)
+app.patch(
   "/api/pieces/:id/image",
   requireAuth,
+  upload.single("image"),
   async (req, res) => {
     const parsed = idParam.safeParse(req.params);
     if (!parsed.success) {
       return res.status(400).json({ message: "Paramètres invalides", errors: parsed.error.issues });
     }
+    if (!req.file) {
+      return res.status(400).json({ message: "Aucun fichier envoyé" });
+    }
+    if (!R2_AVAILABLE) {
+      return res.status(500).json({ message: "Stockage R2 non configuré" });
+    }
     const userId = req.session.userId!;
     const pieceId = parsed.data.id;
     const piece = await storage.getPieceById(userId, pieceId);
     if (!piece) return res.status(404).json({ message: "Pièce introuvable" });
-  if (piece.imageUrl && R2_AVAILABLE) {
+    const oldKey = keyFromPublicUrl(piece.imageUrl || "");
+    const original = sanitizeFilename(req.file.originalname || "image");
+    const ext = original.includes(".") ? original.slice(original.lastIndexOf(".")) : "";
+    const newKey = `pieces/${userId}/${pieceId}-${Date.now()}-${randomUUID()}${ext}`;
+    try {
+      await r2PutObject(newKey, req.file.buffer, req.file.mimetype);
+      const updated = await storage.setPieceImage(userId, pieceId, newKey);
+      if (!updated) {
+        try { await r2DeleteObject(newKey); } catch {}
+        return res.status(404).json({ message: "Pièce introuvable" });
+      }
+      if (oldKey && oldKey !== newKey) {
         try {
-          const key = /^https?:\/\//i.test(piece.imageUrl)
-            ? keyFromPublicUrl(piece.imageUrl)
-            : piece.imageUrl;
-          if (!key.startsWith("/uploads/")) {
-            await r2DeleteObject(key);
-          }
-        } catch {
+          await r2DeleteObject(oldKey);
+        } catch (e) {
+          console.warn("⚠️ Suppression ancienne image R2 échouée:", oldKey, e);
         }
       }
-      const updated = await storage.clearPieceImage(userId, pieceId);
-      if (!updated) return res.status(404).json({ message: "Pièce introuvable" });
-      updated.imageUrl = null;
       return res.json(updated);
-    })
+    } catch (e) {
+      console.error("❌ Replace image failed:", e);
+      return res.status(500).json({ message: "Échec du remplacement de l'image" });
+    }
+  }
+);
 
-    app.get("/api/images/:key(*)", (req, res) => {
-  const key = req.params.key || "";
-  const b64 = Buffer.from(key, "utf8")
-    .toString("base64").replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
-  res.redirect(301, `/api/r2/object/${b64}`);
-});
 
 }
 

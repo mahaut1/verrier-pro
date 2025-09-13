@@ -18,6 +18,13 @@ export default function ImageUpload({
   const [file, setFile] = React.useState<File | null>(null);
   const [isSending, setIsSending] = React.useState(false);
   const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
+
+    const [displayUrl, setDisplayUrl] = React.useState<string | null>(currentImageUrl ?? null);
+
+  React.useEffect(() => {
+    setDisplayUrl(currentImageUrl ?? null);
+  }, [currentImageUrl]);
+
   const fileRef = React.useRef<HTMLInputElement>(null);
 
   // preview temporaire
@@ -39,9 +46,9 @@ export default function ImageUpload({
     try {
       const fd = new FormData();
       fd.append("image", file, file.name);
-
+      const method = currentImageUrl ? "PATCH" : "POST";
       const res = await fetch(`/api/pieces/${pieceId}/image`, {
-        method: "POST",
+        method,
         body: fd,
         credentials: "include",
       });
@@ -63,6 +70,8 @@ export default function ImageUpload({
           data?.piece?.imageUrl ??
           null;
       }
+      setDisplayUrl(imageUrl ?? null);
+      setPreviewUrl(null); 
       onImageUploaded?.(imageUrl);
       setFile(null);
       if (fileRef.current) fileRef.current.value = "";
@@ -85,6 +94,8 @@ export default function ImageUpload({
         try { msg = (await res.json())?.message || msg; } catch {}
         throw new Error(msg);
       }
+      setDisplayUrl(null);
+      setPreviewUrl(null);
       onImageUploaded?.(null);
       setFile(null);
     } catch (e: any) {
@@ -115,8 +126,10 @@ export default function ImageUpload({
         </div>
 
         <Button type="button" onClick={handleUpload} disabled={!file || disabled || isSending}>
-          {isSending ? "Téléversement…" : "Téléverser"}
+          {isSending ? "Téléversement…" : currentImageUrl ? "Remplacer" : "Téléverser"}
         </Button>
+
+
 
         {currentImageUrl ? (
           <Button type="button" variant="destructive" onClick={handleDelete} disabled={disabled || isSending}>

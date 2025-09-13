@@ -1,4 +1,5 @@
 import { useForm } from "react-hook-form";
+import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { z } from "zod";
@@ -104,6 +105,9 @@ export default function PieceEditForm({ piece, onSuccess }: PieceEditFormProps) 
   const onSubmit = (data: FormData) => {
     updatePieceMutation.mutate(data);
   };
+
+  const [imageUrl, setImageUrl] = useState<string | undefined>(piece.imageUrl || undefined);
+  
 
   return (
     <div className="flex max-h-[85vh] flex-col overflow-hidden">
@@ -303,16 +307,20 @@ export default function PieceEditForm({ piece, onSuccess }: PieceEditFormProps) 
             </div>
 
             <div className="space-y-4">
-              <ImageUpload
-                pieceId={piece.id}
-                currentImageUrl={piece.imageUrl || undefined}
-                onImageUploaded={(imageUrl) => {
-                  queryClient.setQueryData(["/api/pieces", piece.id], (old: any) => ({ ...old, imageUrl }));
-                  queryClient.invalidateQueries({ queryKey: ["/api/pieces"] });
-                  toast({ title: "Succès", description: "Image mise à jour avec succès" });
-                }}
-                disabled={updatePieceMutation.isPending}
-              />
+                <ImageUpload
+                  pieceId={piece.id}
+                  currentImageUrl={imageUrl}
+                  onImageUploaded={(url) => {
+                    setImageUrl(url ?? undefined);
+                    queryClient.setQueryData(["/api/pieces"], (old: any) => {
+                      if (!Array.isArray(old)) return old;
+                      return old.map((p: any) => (p.id === piece.id ? { ...p, imageUrl: url } : p));
+                    });
+                    queryClient.invalidateQueries({ queryKey: ["/api/pieces"] });
+                    toast({ title: "Succès", description: "Image mise à jour avec succès" });
+                  }}
+                  disabled={updatePieceMutation.isPending}
+                />
             </div>
           </div>
 
