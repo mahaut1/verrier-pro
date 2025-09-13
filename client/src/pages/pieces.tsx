@@ -16,7 +16,12 @@ import PieceEditForm from "../components/forms/piece-edit-form";
 import NewPieceTypeForm from "../components/forms/new_piece_type_form";
 import {resolveImageUrl} from '../lib/images'
 
-type PieceWithType = Piece & { pieceType?: { id: number; name: string } | null };
+type PieceWithSubtype = Piece & {
+  pieceSubtypeId: number | null;                 
+  pieceType?: { id: number; name: string } | null; 
+};
+
+type SubtypeOption = { id: number; name: string };
 
 function getStatusColor(status: string) {
   switch (status) {
@@ -58,11 +63,11 @@ export default function Pieces() {
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [subtypeFilter, setSubtypeFilter] = useState<string>("all");
   const [openDialog, setOpenDialog] = useState(false);
-  const [editPiece, setEditPiece] = useState<PieceWithType | null>(null);
+  const [editPiece, setEditPiece] = useState<PieceWithSubtype | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-const { data: pieces = [], isLoading } = useQuery<PieceWithType[]>({
+const { data: pieces = [], isLoading } = useQuery<PieceWithSubtype[]>({
   queryKey: ["/api/pieces"],
   queryFn: async () => {
     const res = await fetch("/api/pieces", { credentials: "include" });
@@ -93,21 +98,41 @@ const { data: pieces = [], isLoading } = useQuery<PieceWithType[]>({
     [pieceTypes]
   );
 
-  const { data: subtypeOptions = [] } = useQuery({
-  queryKey: ["/api/piece-subtypes", { pieceTypeId: typeFilter }],
-  enabled: typeFilter !== "all",
-  queryFn: async () => {
-    const params = new URLSearchParams({
-      onlyActive: "true",
-      pieceTypeId: String(typeFilter),
-    });
-    const r = await fetch(`/api/piece-subtypes?${params.toString()}`, {
-      credentials: "include",
-    });
-    if (!r.ok) throw new Error(await r.text());
-    return (await r.json()) as Array<{ id: number; name: string }>;
-  },
-});
+  const { data: subtypeOptions = [] } = useQuery<SubtypeOption[]>({
+    queryKey: ["/api/piece-subtypes", { pieceTypeId: typeFilter }],
+    enabled: typeFilter !== "all",
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        onlyActive: "true",
+        pieceTypeId: String(typeFilter),
+      });
+      const r = await fetch(`/api/piece-subtypes?${params.toString()}`, {
+        credentials: "include",
+      });
+      if (!r.ok) throw new Error(await r.text());
+      return (await r.json()) as Array<SubtypeOption>;
+    },
+  });
+
+   const { data: allSubtypes = [] } = useQuery<SubtypeOption[]>({
+    queryKey: ["/api/piece-subtypes", "all"], // ⭐ clé distincte
+    queryFn: async () => {
+      const r = await fetch(`/api/piece-subtypes?onlyActive=true`, { 
+        credentials: "include",
+      });
+      if (!r.ok) throw new Error(await r.text());
+      return (await r.json()) as Array<SubtypeOption>;
+    },
+  });
+
+    const subtypeNameById = useMemo<Record<string, string>>(
+    () =>
+      (Array.isArray(allSubtypes) ? allSubtypes : []).reduce((acc, s) => {
+        acc[String(s.id)] = s.name;
+        return acc;
+      }, {} as Record<string, string>),
+    [allSubtypes]
+  );
 
   const deletePieceMutation = useMutation({
     mutationFn: async (id: number) => {
@@ -137,8 +162,8 @@ const filteredPieces = useMemo(
         ? pieces.filter((piece) => {
             const typeName =
               typeNameById[String(piece.pieceTypeId ?? "")] ??
-              (piece as any).pieceType?.name ??
-              "";
+              piece.pieceType?.name ??
+                            "";
 
             const matchesSearch =
               piece.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -154,7 +179,11 @@ const filteredPieces = useMemo(
               typeFilter === "all" ||
               String(piece.pieceTypeId ?? "") === typeFilter;
 
-            return matchesSearch && matchesStatus && matchesType;
+             const matchesSubtype =
+            subtypeFilter === "all" ||
+            String(piece.pieceSubtypeId ?? "") === subtypeFilter;
+
+            return matchesSearch && matchesStatus && matchesType && matchesSubtype;
           })
         : [],
     [pieces, typeNameById, searchQuery, statusFilter, typeFilter, subtypeFilter]
@@ -207,7 +236,7 @@ const filteredPieces = useMemo(
                   Nouvelle pièce
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl p-0 max-h-[85vh] overflow-hidden">
+              <DialogContent className="max-w-2xl p-0 max-h-[85vh] overflow-auto">
                 <PieceForm onSuccess={() => setOpenDialog(false)} />
               </DialogContent>
             </Dialog>
@@ -229,7 +258,7 @@ const filteredPieces = useMemo(
             />
           </div>
 
-          <Select value={statusFilter} onValueChange={setTypeFilter}>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger>
               <SelectValue placeholder="Statut" />
             </SelectTrigger>
@@ -258,7 +287,7 @@ const filteredPieces = useMemo(
               {pieceTypes.length === 0 ? (
                 <div className="px-3 py-2 text-sm text-gray-500">Aucun type pour le moment</div>
               ) : (
-                pieceTypes.map((t: any) => (
+                pieceTypes.map((t) => (
                   <SelectItem key={t.id} value={String(t.id)}>
                     {t.name}
                   </SelectItem>
@@ -333,6 +362,9 @@ const filteredPieces = useMemo(
                   ? new Date(piece.createdAt).toLocaleDateString("fr-FR")
                   : "—";
 
+                  const subtypeName = 
+                  subtypeNameById[String(piece.pieceSubtypeId ?? "")] ?? "";
+
                 return (
                   <Card key={piece.id} className="overflow-hidden">
                     <CardContent className="p-0">
@@ -361,8 +393,11 @@ const filteredPieces = useMemo(
                           </Badge>
                         </div>
 
-                        <p className="text-sm text-gray-500 mt-1">{typeName}</p>
-
+                        <p className="text-sm text-gray-500 mt-1">
+                          {typeName}
+                          {subtypeName ? ` • ${subtypeName}` : ""}
+                        </p>
+                        
                         {piece.description && (
                           <p className="text-sm text-gray-600 mt-2 line-clamp-2">
                             {piece.description}
