@@ -153,14 +153,14 @@ export default function PieceEditForm({ piece, onSuccess }: PieceEditFormProps) 
                   control={form.control}
                   name="pieceTypeId"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="col-span-1 lg:col-span-1">
                       <FormLabel>Type</FormLabel>
                       <Select
                         onValueChange={(val) => field.onChange(val === "none" ? null : Number(val))}
                         defaultValue={field.value == null ? "none" : String(field.value)}
                       >
                         <FormControl>
-                          <SelectTrigger>
+                          <SelectTrigger className="w-full max-w-full overflow-hidden [&>span]:truncate">
                             <SelectValue placeholder="Sélectionner le type" />
                           </SelectTrigger>
                         </FormControl>
@@ -182,7 +182,7 @@ export default function PieceEditForm({ piece, onSuccess }: PieceEditFormProps) 
                   control={form.control}
                   name="dominantColor"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="col-span-1">
                       <FormLabel>Couleur dominante</FormLabel>
                       <FormControl>
                         <Input placeholder="Bleu cobalt" {...field} value={field.value ?? ""} />

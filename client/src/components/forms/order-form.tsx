@@ -178,7 +178,7 @@ export default function OrderForm({ onSuccess }: { onSuccess?: () => void }) {
 
 
  return (
-    <div className="flex max-h-[85vh] flex-col">
+    <div className="flex max-h-[85vh] flex-col overflow-hidden">
       {/* Header sticky */}
       <DialogHeader className="sticky top-0 z-10 border-b bg-white/80 px-6 py-4 backdrop-blur supports-[backdrop-filter]:bg-white/60">
         <DialogTitle>Nouvelle commande</DialogTitle>
@@ -188,7 +188,7 @@ export default function OrderForm({ onSuccess }: { onSuccess?: () => void }) {
         {/* Corps scrollable */}
         <form
           onSubmit={form.handleSubmit(onSubmit)}
-          className="flex-1 overflow-y-auto px-6 py-5 space-y-5"
+          className="flex-1 overflow-y-auto px-6 py-5 space-y-5 [transform:translateZ(0)] will-change-transform"
         >
           {/* Entête commande */}
           <FormField
