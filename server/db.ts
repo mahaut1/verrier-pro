@@ -2,7 +2,14 @@ import { Pool, PoolConfig } from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
 import * as schema from "../shared/schema.js";
 import * as tls from "tls";
+import dotenv from "dotenv";
+import fs from "fs";
 
+const guessed = process.env.DOTENV_CONFIG_PATH
+  ?? (process.env.NODE_ENV === "test" ? "server/.env.test" : ".env");
+if (!process.env.DATABASE_URL && fs.existsSync(guessed)) {
+  dotenv.config({ path: guessed });
+}
 const urlStr = process.env.DATABASE_URL;
 if (!urlStr) throw new Error("DATABASE_URL manquante");
 
