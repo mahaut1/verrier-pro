@@ -1,7 +1,6 @@
 .env
 .env.backup
 .env.docker
-package-lock.json
 node_modules
 dist
 .env.production.local
