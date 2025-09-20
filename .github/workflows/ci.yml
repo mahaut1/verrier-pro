@@ -70,8 +70,9 @@ jobs:
 
       - name: Migrate DB (dev)
         run: |
-         cross-env NODE_ENV=development DOTENV_CONFIG_PATH=server/.env.test \
-         node -r dotenv/config ./node_modules/tsx/dist/cli.js scripts/migrate.ts
+          DOTENV_CONFIG_PATH=server/.env.test \
+          NODE_ENV=development \
+          npx tsx -r dotenv/config scripts/migrate.ts
 
       - name: Run tests with coverage
         run: npm run test:ci
