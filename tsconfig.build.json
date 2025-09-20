@@ -12,5 +12,17 @@
     "sourceMap": false,
     "isolatedModules": false
   },
-  "include": ["server/**/*.ts", "shared/**/*.ts"]
+  "include": ["server/**/*.ts", "shared/**/*.ts"],
+  "exclude": [
+    "**/__tests__/**",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.spec.ts",
+    "**/*.spec.tsx",
+    "server/test/**",
+    "client/**",
+    "jest.config.cjs",
+    "**/vite.config.*",
+    "**/vitest.config.*"
+  ]
 }

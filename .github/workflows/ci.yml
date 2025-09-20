@@ -1,0 +1,97 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    env:
+      CI_PGHOST:     ${{ vars.CI_PGHOST     || '127.0.0.1' }}
+      CI_PGPORT:     ${{ vars.CI_PGPORT     || '5432' }}
+      CI_PGUSER:     ${{ vars.CI_PGUSER     || 'postgres' }}
+      CI_PGPASSWORD: ${{ vars.CI_PGPASSWORD || 'postgres' }}
+      CI_PGDATABASE: ${{ vars.CI_PGDATABASE || 'verrierpro_test' }}
+      NODE_ENV: test
+      CI: true
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_USER:     ${{ vars.CI_PGUSER     || 'postgres' }}
+          POSTGRES_PASSWORD: ${{ vars.CI_PGPASSWORD || 'postgres' }}
+          POSTGRES_DB:       ${{ vars.CI_PGDATABASE || 'verrierpro_test' }}
+        options: >-
+          --health-cmd="pg_isready -U ${{ vars.CI_PGUSER || 'postgres' }} -d ${{ vars.CI_PGDATABASE || 'verrierpro_test' }}"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Create server/.env.test
+        run: |
+          mkdir -p server
+          cat > server/.env.test << EOF
+          PGHOST=${{ env.CI_PGHOST }}
+          PGPORT=${{ env.CI_PGPORT }}
+          PGUSER=${{ env.CI_PGUSER }}
+          PGPASSWORD=${{ env.CI_PGPASSWORD }}
+          PGDATABASE=${{ env.CI_PGDATABASE }}
+          DATABASE_URL=postgres://${{ env.CI_PGUSER }}:${{ env.CI_PGPASSWORD }}@${{ env.CI_PGHOST }}:${{ env.CI_PGPORT }}/${{ env.CI_PGDATABASE }}
+          NODE_ENV=test
+          EOF
+
+      - name: Wait for Postgres
+        run: |
+          for i in {1..30}; do
+            (echo > /dev/tcp/${{ env.CI_PGHOST }}/${{ env.CI_PGPORT }}) >/dev/null 2>&1 && echo "Postgres is up" && break
+            echo "waiting for postgres..."
+            sleep 1
+          done
+
+      - name: Migrate DB (dev)
+        run: npm run db:migrate:dev
+
+      - name: Run tests with coverage
+        run: npm run test:ci
+
+      - name: Upload coverage (server)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-server
+          path: server/coverage
+          if-no-files-found: ignore
+
+      - name: Upload coverage (client)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-client
+          path: client/coverage
+          if-no-files-found: ignore
+
+      - name: Dump postgres logs on failure
+        if: failure()
+        run: |
+          docker ps -a || true
+          docker logs $(docker ps --filter "name=postgres" --format "{{.ID}}") || true

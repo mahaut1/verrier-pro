@@ -7,3 +7,4 @@ dist
 .env.production.local
 prod.env
 .env.prod
+.env.test
