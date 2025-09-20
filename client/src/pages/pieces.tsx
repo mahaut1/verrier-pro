@@ -269,6 +269,8 @@ const filteredPieces = useMemo(
               <SelectItem value="gallery">En galerie</SelectItem>
               <SelectItem value="sold">Vendu</SelectItem>
               <SelectItem value="completed">Terminé</SelectItem>
+              <SelectItem value="gift">Offerte</SelectItem>
+              <SelectItem value="broken">Cassée</SelectItem>
             </SelectContent>
           </Select>
           

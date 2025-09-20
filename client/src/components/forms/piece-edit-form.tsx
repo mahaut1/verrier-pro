@@ -310,6 +310,8 @@ export default function PieceEditForm({ piece, onSuccess }: { piece: PieceWithTy
                           <SelectItem value="gallery">En galerie</SelectItem>
                           <SelectItem value="sold">Vendue</SelectItem>
                           <SelectItem value="completed">Terminée</SelectItem>
+                          <SelectItem value="gift">Offerte</SelectItem>
+                          <SelectItem value="broken">Cassée</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
