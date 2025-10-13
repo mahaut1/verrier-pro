@@ -77,21 +77,15 @@ jobs:
       - name: Run tests with coverage
         run: npm run test:ci
 
-      - name: Upload coverage (server)
+      - name: Upload coverage (any)
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4  
         with:
-          name: coverage-server
-          path: server/coverage
-          if-no-files-found: ignore
-
-      - name: Upload coverage (client)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-client
-          path: client/coverage
-          if-no-files-found: ignore
+          name: coverage
+          path: |
+            coverage/**
+            server/coverage/**
+            client/coverage/**
 
       - name: Dump postgres logs on failure
         if: failure()

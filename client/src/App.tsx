@@ -16,8 +16,7 @@ import Dashboard from "./pages/dashboard";
 import ForgotPassword from "./pages/forgotPassword";
 import ResetPassword from "./pages/resetPassword";
 
-/**  Auto-logout après 5h d'inactivité  */
-const IDLE_TIMEOUT_MS = 5 * 60 * 60 * 1000; // 5h
+const IDLE_TIMEOUT_MS = 5 * 60 * 60 * 1000; 
 const LS_KEY_LAST_ACTIVITY = "verrier:last-activity";
 const LS_KEY_FORCE_LOGOUT = "verrier:force-logout";
 
@@ -36,10 +35,9 @@ function AutoLogoutGuard() {
   const schedule = () => {
     clearTimer();
     timerRef.current = window.setTimeout(async () => {
-      // double sécurité : on re-vérifie la dernière activité stockée
       const last = Number(localStorage.getItem(LS_KEY_LAST_ACTIVITY) || "0");
       if (Date.now() - last >= IDLE_TIMEOUT_MS) {
-        localStorage.setItem(LS_KEY_FORCE_LOGOUT, String(Date.now())); // sync autres onglets
+        localStorage.setItem(LS_KEY_FORCE_LOGOUT, String(Date.now())); 
         await logout();
         navigate("/login", { replace: true });
       } else {
@@ -111,7 +109,6 @@ function RequireAuth({ children }: { children: JSX.Element }) {
   return children;
 }
 
-/** Empêche d’accéder /login et /register si déjà connecté */
 function GuestOnly({ children }: { children: JSX.Element }) {
   const { isLoading, isAuthenticated } = useAuth();
   if (isLoading) {
@@ -128,7 +125,6 @@ function GuestOnly({ children }: { children: JSX.Element }) {
   return children;
 }
 
-/** On insère AutoLogoutGuard uniquement quand on est dans la zone protégée */
 function AuthenticatedShell() {
   return (
     <>

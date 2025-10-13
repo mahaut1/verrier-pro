@@ -144,7 +144,7 @@ export default function RecentActivity() {
                           </p>
                         </div>
                         <div className="flex-shrink-0">
-                          <Link to="/stock">
+                          <Link to="/stocks">
                             <Button variant="outline" size="sm">Gérer</Button>
                           </Link>
                         </div>
@@ -157,7 +157,7 @@ export default function RecentActivity() {
           )}
 
           <div className="mt-6">
-            <Link to="/stock">
+            <Link to="/stocks">
               <Button variant="outline" className="w-full">Gérer les stocks</Button>
             </Link>
           </div>
