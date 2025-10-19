@@ -14,6 +14,7 @@ import PieceForm from "../components/forms/piece-form";
 import PieceEditForm from "../components/forms/piece-edit-form";
 import NewPieceTypeForm from "../components/forms/new_piece_type_form";
 import { resolveImageUrl } from "../lib/images";
+import PieceTypesManager from "../components/forms/piece-types-edit-form";
 import { getStatusColor, getStatusLabel, buildIdNameMap } from "../lib/pieces.helpers";
 import {
   fetchPieces,
@@ -191,16 +192,16 @@ const filteredPieces = useMemo(
               Suivez et gérez toutes vos créations artistiques
             </p>
           </div>
-          <div className="mt-4 flex md:mt-0 md:ml-4">
-             <Dialog>
+          <div className="mt-4 flex md:mt-0 md:ml-4 gap-4 items-center">
+            <Dialog>
               <DialogTrigger asChild>
                 <Button variant="outline">+ Nouveau type</Button>
               </DialogTrigger>
               <DialogContent className="max-w-md">
                 <NewPieceTypeForm />
               </DialogContent>
-            </Dialog> 
-            
+            </Dialog>
+
             <Dialog open={openDialog} onOpenChange={setOpenDialog}>
               <DialogTrigger asChild>
                 <Button>
@@ -210,6 +211,15 @@ const filteredPieces = useMemo(
               </DialogTrigger>
               <DialogContent className="max-w-2xl p-0 max-h-[85vh] overflow-auto">
                 <PieceForm onSuccess={() => setOpenDialog(false)} />
+              </DialogContent>
+            </Dialog>
+
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="outline">Gérer les types</Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-xl">
+                <PieceTypesManager />
               </DialogContent>
             </Dialog>
           </div>
@@ -261,11 +271,13 @@ const filteredPieces = useMemo(
               {pieceTypes.length === 0 ? (
                 <div className="px-3 py-2 text-sm text-gray-500">Aucun type pour le moment</div>
               ) : (
-                pieceTypes.map((t) => (
-                  <SelectItem key={t.id} value={String(t.id)}>
-                    {t.name}
-                  </SelectItem>
-                ))
+                [...pieceTypes]
+                  .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }))
+                  .map((t) => (
+                    <SelectItem key={t.id} value={String(t.id)}>
+                      {t.name}
+                    </SelectItem>
+                  ))
               )}
             </SelectContent>
           </Select>
@@ -401,9 +413,7 @@ const filteredPieces = useMemo(
                             alt={piece.name}
                             className="w-full h-48 object-cover"
                             loading="lazy"
-                            onError={() =>
-                              console.error("Image KO:", piece.imageUrl)
-                            }
+                            onError={() => console.error("Image KO:", piece.imageUrl)}
                           />
                         </div>
                       )}

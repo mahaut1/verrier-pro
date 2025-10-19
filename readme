@@ -8,10 +8,21 @@ VerrierPro est une plateforme web moderne conçue spécialement pour les artisan
 
   Gestion des Créations
 - **Catalogue personnel** : Répertoire complet des pièces en verre
-- **Types configurables** : Poissons, tortues, vases, luminaires, etc.
+- **Types configurables et éditables** : Création, modification, suppression de types directement depuis l’interface (bouton "Gérer les types")
+- **Types triés** : Les types sont toujours affichés par ordre alphabétique dans les menus déroulants
 - **Suivi statuts** : De la création à la livraison
 - **Upload photos** : Documentation visuelle haute qualité
 - **Localisation** : Atelier, galerie, client en temps réel
+ Ergonomie et Interface
+- **Actions rapides** : Boutons "Nouvelle pièce", "Nouveau type", "Gérer les types" alignés et accessibles sur la page principale
+- **Gestion via dialogues** : Modification et suppression des types/sous-types dans des pop-ups dédiés
+- **Notifications** : Messages de succès ou d’erreur affichés lors des modifications ou suppressions
+ Filtrage et Recherche
+- **Filtres dynamiques** : Recherche et filtrage des pièces, types et sous-types optimisés
+- **Menus déroulants** : Affichage des types triés pour une sélection facilitée
+ Techniques et Sécurité
+- **React Query** : Rafraîchissement automatique des listes après modification/suppression
+- **Validation** : Sécurité et validation côté client et serveur pour toutes les actions sensibles
 
  Réseau de Galeries
 - **Partenaires multiples** : Gestion complète des galeries
@@ -165,6 +176,7 @@ npm run check        # Vérification types TypeScript
 # Production  
 npm run build        # Build optimisé pour production
 npm run start        # Démarrage serveur production
+npm run start:prod:local   # Build + lancement serveur en mode préprod (avec .env.prod)
 
 # Base de données
 npm run db:push      # Migration schéma vers base
