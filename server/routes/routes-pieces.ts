@@ -55,17 +55,26 @@ function sanitizeFilename(name: string): string {
     .slice(0, 150);                      // borne raisonnable
 }
 
-// Schéma de query pour LIST
+// Schéma de query pour LIST (supporte pagination optionnelle et filtres élargis)
 const listQuerySchema = z.object({
   status: z.string().trim().min(1).optional(),                
   pieceTypeId: z.coerce.number().int().positive().optional(),
+  pieceSubtypeId: z.coerce.number().int().positive().optional(),
   galleryId: z.coerce.number().int().positive().optional(),
+  search: z.string().trim().min(1).optional(),
   // filtre d’éligibilité pour une commande
   availableForOrder: z
-    .enum(["true", "false"])
+    .enum(["true", "false"]) 
     .transform(v => v === "true")
     .optional(),
   orderId: z.coerce.number().int().positive().optional(),
+  // pagination optionnelle, activée via ?paginated=true
+  paginated: z
+    .enum(["true", "false"]) 
+    .transform(v => v === "true")
+    .optional(),
+  page: z.coerce.number().int().positive().optional(),
+  pageSize: z.coerce.number().int().positive().max(200).optional(),
 });
 
 export function registerPieceRoutes(app: ExpressApp, requireAuth: RequestHandler) {
@@ -96,9 +105,22 @@ export function registerPieceRoutes(app: ExpressApp, requireAuth: RequestHandler
           .status(400)
           .json({ message: "Paramètres invalides", errors: parsed.error.issues });
       }
-      const { status, pieceTypeId, galleryId, availableForOrder, orderId } = parsed.data;
-      const filters: PieceListQuery = {status,pieceTypeId,galleryId,};
+      const { status, pieceTypeId, pieceSubtypeId, galleryId, search, availableForOrder, orderId, paginated, page = 1, pageSize = 12 } = parsed.data;
+      const filters: PieceListQuery = { status, pieceTypeId, galleryId };
+
+      // 1) Récupère toutes les pièces filtrées de base (côté storage)
       let rows = await storage.listPieces(req.session.userId!, filters);
+      
+      // 2) Filtres additionnels au niveau route
+      if (pieceSubtypeId) {
+        rows = rows.filter((p: any) => p.pieceSubtypeId === pieceSubtypeId);
+      }
+      if (search) {
+        const s = search.toLowerCase();
+        rows = rows.filter((p: any) =>
+          (p.name ?? "").toLowerCase().includes(s) || (p.description ?? "").toLowerCase().includes(s)
+        );
+      }
       if (availableForOrder) {
         let targetGalleryId: number | undefined;
         if (orderId) {
@@ -114,13 +136,21 @@ export function registerPieceRoutes(app: ExpressApp, requireAuth: RequestHandler
           return notSold && (p.galleryId == null || p.galleryId === targetGalleryId);
         });
       }
-        const withSigned = await Promise.all(
-        rows.map(async (p) => ({
-          ...p,
-        }))
-      );
+        const withSigned = await Promise.all(rows.map(async (p) => ({ ...p })));
 
-      return res.json(withSigned);
+        // 4) Pagination optionnelle et réponse compatible
+        if (paginated) {
+          const total = withSigned.length;
+          const totalPages = Math.max(1, Math.ceil(total / pageSize));
+          const safePage = Math.min(Math.max(1, page), totalPages);
+          const start = (safePage - 1) * pageSize;
+          const end = start + pageSize;
+          const items = withSigned.slice(start, end);
+          return res.json({ items, pagination: { page: safePage, pageSize, total, totalPages } });
+        }
+
+        // Ancienne forme: tableau simple
+        return res.json(withSigned);
     })
   );
 

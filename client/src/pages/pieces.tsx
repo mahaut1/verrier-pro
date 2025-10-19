@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,91 +10,65 @@ import { Plus, Search, Box, MapPin, Calendar, Edit, Trash2 } from "lucide-react"
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "../hooks/useToast";
 import { apiRequest } from "../lib/queryClient";
-import type { Piece } from "@shared/schema";
 import PieceForm from "../components/forms/piece-form";
 import PieceEditForm from "../components/forms/piece-edit-form";
 import NewPieceTypeForm from "../components/forms/new_piece_type_form";
-import {resolveImageUrl} from '../lib/images'
+import { resolveImageUrl } from "../lib/images";
+import { getStatusColor, getStatusLabel, buildIdNameMap } from "../lib/pieces.helpers";
+import {
+  fetchPieces,
+  fetchPieceTypes,
+  fetchPieceSubtypes,
+  fetchAllSubtypes,
+  type PieceWithSubtype,
+  type SubtypeOption,
+  type PaginatedPieces,
+} from "../lib/pieces.api";
 
-type PieceWithSubtype = Piece & {
-  pieceSubtypeId: number | null;                 
-  pieceType?: { id: number; name: string } | null; 
-};
-
-type SubtypeOption = { id: number; name: string };
-
-function getStatusColor(status: string) {
-  switch (status) {
-    case "workshop":
-      return "bg-green-100 text-green-800";
-    case "transit":
-      return "bg-blue-100 text-blue-800";
-    case "gallery":
-      return "bg-purple-100 text-purple-800";
-    case "sold":
-      return "bg-gray-100 text-gray-800";
-    case "completed":
-      return "bg-emerald-100 text-emerald-800";
-    default:
-      return "bg-gray-100 text-gray-800";
-  }
-}
-
-function getStatusLabel(status: string) {
-  switch (status) {
-    case "workshop":
-      return "Atelier";
-    case "transit":
-      return "En transit";
-    case "gallery":
-      return "En galerie";
-    case "sold":
-      return "Vendu";
-    case "completed":
-      return "Terminé";
-    default:
-      return status;
-  }
-}
 
 export default function Pieces() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [typeFilter, setTypeFilter] = useState<string>("all");
-  const [subtypeFilter, setSubtypeFilter] = useState<string>("all");
+  const [typeFilter, setTypeFilter] = useState<number | "all">("all");
+  const [subtypeFilter, setSubtypeFilter] = useState<number | "all">("all");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number>(12);
   const [openDialog, setOpenDialog] = useState(false);
   const [editPiece, setEditPiece] = useState<PieceWithSubtype | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-const { data: pieces = [], isLoading } = useQuery<PieceWithSubtype[]>({
-  queryKey: ["/api/pieces"],
+const { data: piecesData, isLoading, error: piecesError } = useQuery<PieceWithSubtype[] | PaginatedPieces>({
+  queryKey: ["/api/pieces", { page, pageSize, statusFilter, typeFilter, subtypeFilter, searchQuery }],
   queryFn: async () => {
-    const res = await fetch("/api/pieces", { credentials: "include" });
-    if (!res.ok) throw new Error("Impossible de charger les pièces");
-    return res.json(); // doit renvoyer un tableau
+    return fetchPieces({
+      paginated: true,
+      page,
+      pageSize,
+      status: statusFilter,
+      pieceTypeId: typeFilter,
+      pieceSubtypeId: subtypeFilter,
+      search: searchQuery,
+    });
   },
 });
 
-  const { data: pieceTypes = [] } = useQuery({
+const pieces: PieceWithSubtype[] = Array.isArray(piecesData)
+  ? piecesData
+  : piecesData?.items ?? [];
+const serverPagination = !Array.isArray(piecesData) && piecesData?.pagination ? piecesData.pagination : null;
+
+  const { data: pieceTypes = [], error: pieceTypesError } = useQuery({
     queryKey: ["/api/piece-types"],
     queryFn: async () => {
-      const res = await fetch("/api/piece-types", { credentials: "include" });
-      if (!res.ok) throw new Error("Impossible de charger les types");
-      return res.json() as Promise<{ id: number; name: string }[]>;
+      return fetchPieceTypes();
     },
   });
 
   // Map id -> name pour afficher/filtrer par nom de type même sans join côté backend
   const typeNameById = useMemo<Record<string, string>>(
-    () =>
-      (Array.isArray(pieceTypes) ? pieceTypes : []).reduce(
-        (acc, t) => {
-          acc[String(t.id)] = t.name;
-          return acc;
-        },
-        {} as Record<string, string>
-      ),
+    () => buildIdNameMap(pieceTypes),
     [pieceTypes]
   );
 
@@ -102,39 +76,23 @@ const { data: pieces = [], isLoading } = useQuery<PieceWithSubtype[]>({
     queryKey: ["/api/piece-subtypes", { pieceTypeId: typeFilter }],
     enabled: typeFilter !== "all",
     queryFn: async () => {
-      const params = new URLSearchParams({
-        onlyActive: "true",
-        pieceTypeId: String(typeFilter),
-      });
-      const r = await fetch(`/api/piece-subtypes?${params.toString()}`, {
-        credentials: "include",
-      });
-      if (!r.ok) throw new Error(await r.text());
-      return (await r.json()) as Array<SubtypeOption>;
+      return fetchPieceSubtypes(Number(typeFilter));
     },
   });
 
-   const { data: allSubtypes = [] } = useQuery<SubtypeOption[]>({
-    queryKey: ["/api/piece-subtypes", "all"], // ⭐ clé distincte
+   const { data: allSubtypes = [], error: allSubtypesError } = useQuery<SubtypeOption[], Error>({
+    queryKey: ["/api/piece-subtypes", "all"], 
     queryFn: async () => {
-      const r = await fetch(`/api/piece-subtypes?onlyActive=true`, { 
-        credentials: "include",
-      });
-      if (!r.ok) throw new Error(await r.text());
-      return (await r.json()) as Array<SubtypeOption>;
+      return fetchAllSubtypes();
     },
   });
 
     const subtypeNameById = useMemo<Record<string, string>>(
-    () =>
-      (Array.isArray(allSubtypes) ? allSubtypes : []).reduce((acc, s) => {
-        acc[String(s.id)] = s.name;
-        return acc;
-      }, {} as Record<string, string>),
+    () => buildIdNameMap(allSubtypes),
     [allSubtypes]
   );
 
-  const deletePieceMutation = useMutation({
+  const deletePieceMutation = useMutation<void, Error, number>({
     mutationFn: async (id: number) => {
       return apiRequest("DELETE", `/api/pieces/${id}`);
     },
@@ -146,7 +104,7 @@ const { data: pieces = [], isLoading } = useQuery<PieceWithSubtype[]>({
         description: "La pièce a été supprimée avec succès.",
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: "Erreur",
         description: error.message || "Une erreur est survenue lors de la suppression.",
@@ -155,7 +113,16 @@ const { data: pieces = [], isLoading } = useQuery<PieceWithSubtype[]>({
     },
   });
 
+  function confirmDelete(id: number | null) {
+    if (!id) return;
+    deletePieceMutation.mutate(id);
+    setDeleteConfirmId(null);
+  }
 
+  const deleting = deletePieceMutation.status === "pending";
+
+
+// Si côté serveur on pagine et filtre déjà, on n'applique plus le filtrage côté client
 const filteredPieces = useMemo(
     () =>
       Array.isArray(pieces)
@@ -177,17 +144,22 @@ const filteredPieces = useMemo(
 
             const matchesType =
               typeFilter === "all" ||
-              String(piece.pieceTypeId ?? "") === typeFilter;
+              Number(piece.pieceTypeId ?? -1) === typeFilter;
 
              const matchesSubtype =
             subtypeFilter === "all" ||
-            String(piece.pieceSubtypeId ?? "") === subtypeFilter;
+            Number(piece.pieceSubtypeId ?? -1) === subtypeFilter;
 
             return matchesSearch && matchesStatus && matchesType && matchesSubtype;
           })
         : [],
     [pieces, typeNameById, searchQuery, statusFilter, typeFilter, subtypeFilter]
   );
+
+  // Reset page to 1 quand filtres ou recherche changent
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, statusFilter, typeFilter, subtypeFilter]);
 
 
   if (isLoading) {
@@ -274,10 +246,10 @@ const filteredPieces = useMemo(
             </SelectContent>
           </Select>
           
-          <Select
-           value={typeFilter} 
+            <Select
+           value={typeFilter === "all" ? "all" : String(typeFilter)}
            onValueChange={(v) => {
-              setTypeFilter(v);
+              setTypeFilter(v === "all" ? ("all" as const) : Number(v));
               setSubtypeFilter("all"); 
             }}>
 
@@ -300,8 +272,8 @@ const filteredPieces = useMemo(
     
 
           <Select
-          value={subtypeFilter}
-          onValueChange={setSubtypeFilter}
+          value={subtypeFilter === "all" ? "all" : String(subtypeFilter)}
+          onValueChange={(v) => setSubtypeFilter(v === "all" ? ("all" as const) : Number(v))}
           disabled={typeFilter === "all"}
         >
           <SelectTrigger>
@@ -343,21 +315,72 @@ const filteredPieces = useMemo(
           </Card>
         </div>
 
-    {/* Grille des pièces */}
+        {piecesError && (
+          <div className="mt-4 p-4 bg-red-50 text-red-700 rounded">Impossible de charger les pièces : {String((piecesError as Error).message)}</div>
+        )}
+        {pieceTypesError && (
+          <div className="mt-4 p-4 bg-red-50 text-red-700 rounded">Impossible de charger les types : {String((pieceTypesError as Error).message)}</div>
+        )}
+        {allSubtypesError && (
+          <div className="mt-4 p-4 bg-red-50 text-red-700 rounded">Impossible de charger les sous-types : {String(allSubtypesError?.message)}</div>
+        )}
+
+        <div className="mt-6 flex items-center justify-between">
+          <div className="text-sm text-gray-600">
+            {serverPagination
+              ? `${serverPagination.total} résultat${serverPagination.total > 1 ? "s" : ""}`
+              : filteredPieces.length === 0
+                ? "Aucun résultat"
+                : `${filteredPieces.length} résultat${filteredPieces.length > 1 ? "s" : ""}`}
+          </div>
+          <div className="flex items-center space-x-2">
+            <span className="text-sm text-gray-600">Par page</span>
+            <Select
+              value={String(pageSize)}
+              onValueChange={(v) => {
+                const next = Number(v);
+                setPageSize(next);
+                setPage(1);
+              }}
+            >
+              <SelectTrigger className="w-[100px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {[6, 12, 24, 48].map((n) => (
+                  <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+    {/* Grille des pièces avec pagination */}
         <div className="mt-8">
-          {filteredPieces.length === 0 ? (
-            <div className="text-center py-12">
-              <Box className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">
-                Aucune pièce
-              </h3>
-              <p className="mt-1 text-sm text-gray-500">
-                Commencez par créer votre première pièce.
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {filteredPieces.map((piece) => {
+          {(() => {
+            const total = serverPagination ? serverPagination.total : filteredPieces.length;
+            const totalPages = serverPagination ? serverPagination.totalPages : Math.max(1, Math.ceil(total / pageSize));
+            const safePage = serverPagination ? serverPagination.page : Math.min(page, totalPages);
+            const start = (safePage - 1) * pageSize;
+            const end = start + pageSize;
+            const pageItems = serverPagination ? pieces : filteredPieces.slice(start, end);
+
+            if (total === 0) {
+              return (
+                <div className="text-center py-12">
+                  <Box className="mx-auto h-12 w-12 text-gray-400" />
+                  <h3 className="mt-2 text-sm font-medium text-gray-900">
+                    Aucune pièce
+                  </h3>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Commencez par créer votre première pièce.
+                  </p>
+                </div>
+              );
+            }
+
+            return (
+              <>
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                  {pageItems.map((piece) => {
                 const typeName =
                   typeNameById[String(piece.pieceTypeId ?? "")] ?? "—";
                 const createdLabel = piece.createdAt
@@ -448,7 +471,9 @@ const filteredPieces = useMemo(
                             size="sm"
                             className="border-red-600 text-red-600 hover:bg-red-50"
                             variant="outline"
-                            onClick={() => deletePieceMutation.mutate(piece.id)}
+                            onClick={() => setDeleteConfirmId(piece.id)}
+                            disabled={deleting}
+                            aria-busy={deleting}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -458,11 +483,34 @@ const filteredPieces = useMemo(
                   </Card>
                 );
               })}
-            </div>
-          )}
+                </div>
+
+                <div className="mt-8 flex items-center justify-between">
+                  <div className="text-sm text-gray-600">
+                    Page {safePage} / {totalPages}
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      variant="outline"
+                      disabled={safePage <= 1}
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    >
+                      Précédent
+                    </Button>
+                    <Button
+                      variant="outline"
+                      disabled={safePage >= totalPages}
+                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    >
+                      Suivant
+                    </Button>
+                  </div>
+                </div>
+              </>
+            );
+          })()}
         </div>
 
-        {/* Dialog d'édition */}
         {editPiece && (
           <Dialog open={!!editPiece} onOpenChange={() => setEditPiece(null)}>
           <DialogContent className="max-w-3xl p-0">
@@ -470,6 +518,23 @@ const filteredPieces = useMemo(
                 piece={editPiece}
                 onSuccess={() => setEditPiece(null)}
               />
+            </DialogContent>
+          </Dialog>
+        )}
+
+        {deleteConfirmId !== null && (
+          <Dialog open={true} onOpenChange={() => setDeleteConfirmId(null)}>
+            <DialogContent className="max-w-md">
+              <div className="p-4">
+                <h3 className="text-lg font-medium">Confirmer la suppression</h3>
+                <p className="text-sm text-gray-600 mt-2">Voulez-vous vraiment supprimer cette pièce ? Cette action est irréversible.</p>
+                <div className="mt-4 flex justify-end space-x-2">
+                  <Button variant="outline" onClick={() => setDeleteConfirmId(null)} disabled={deleting}>Annuler</Button>
+                  <Button className="bg-red-600 text-white" onClick={() => confirmDelete(deleteConfirmId)} disabled={deleting}>
+                    {deleting ? "Suppression..." : "Supprimer"}
+                  </Button>
+                </div>
+              </div>
             </DialogContent>
           </Dialog>
         )}
