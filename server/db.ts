@@ -121,6 +121,8 @@ export const db = drizzle(pool, { schema });
       await client.query(`SET lock_timeout = '5s'`);
       const r = await client.query("select current_user, now() as ts");
       console.log("🎯 DB OK:", r.rows[0]);
+      
+
     } finally {
       client.release();
     }

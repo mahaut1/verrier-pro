@@ -1,0 +1,2618 @@
+openapi: 3.0.3
+info:
+  title: VerrierPro API
+  version: 1.0.0
+  description: |
+    API de gestion d'un atelier de verrier artisanal :
+    - Authentification par session (cookie)
+    - Gestion des galeries
+    - Gestion des pièces, types et sous-types
+    - Gestion de stock
+    - Commandes et items de commande
+    - Événements et pièces exposées
+    - Dashboard et seuils de stock
+    - Proxy sécurisé vers stockage R2 pour les images
+
+servers:
+  - url: https://verrier-pro-production.up.railway.app
+
+tags:
+  - name: Auth
+  - name: Galleries
+  - name: PieceTypes
+  - name: PieceSubtypes
+  - name: Pieces
+  - name: Stock
+  - name: Orders
+  - name: OrderItems
+  - name: Events
+  - name: EventPieces
+  - name: Dashboard
+  - name: R2
+  - name: Health
+
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: connect.sid
+
+  schemas:
+
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Données invalides"
+        errors:
+          type: array
+          nullable: true
+          items:
+            type: object
+
+    Role:
+      type: string
+      enum: [admin, artisan, client]
+      example: artisan
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        username:
+          type: string
+          example: "mwglass"
+        email:
+          type: string
+          example: "contact@mwglass.fr"
+        firstName:
+          type: string
+          example: "Mahaut"
+        lastName:
+          type: string
+          example: "Windal"
+        role:
+          $ref: "#/components/schemas/Role"
+        createdAt:
+          type: string
+          format: date-time
+
+    RegisterUserRequest:
+      type: object
+      required: [username, password, email, firstName, lastName]
+      properties:
+        username:
+          type: string
+          example: "mwglass"
+        password:
+          type: string
+          example: "Verre2025!"
+        email:
+          type: string
+          example: "contact@mwglass.fr"
+        firstName:
+          type: string
+          example: "Mahaut"
+        lastName:
+          type: string
+          example: "Windal"
+        role:
+          $ref: "#/components/schemas/Role"
+
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          description: username ou email
+          example: "mwglass"
+        password:
+          type: string
+          example: "Verre2025!"
+
+    ForgotPasswordRequest:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          example: "contact@mwglass.fr"
+
+    ResetPasswordRequest:
+      type: object
+      required: [token, newPassword]
+      properties:
+        token:
+          type: string
+          example: "a8c91fd3d4j1b8c91fj91b2"
+        newPassword:
+          type: string
+          example: "NouveauMdp!2025"
+
+    Gallery:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        name:
+          type: string
+          example: "Galerie Lumière"
+        contactPerson:
+          type: string
+          nullable: true
+          example: "Élise Dupont"
+        email:
+          type: string
+          nullable: true
+          example: "elise.dupont@galerie-lumiere.fr"
+        phone:
+          type: string
+          nullable: true
+          example: "+33 6 22 54 18 90"
+        address:
+          type: string
+          nullable: true
+          example: "12 Rue des Arts"
+        city:
+          type: string
+          nullable: true
+          example: "Paris"
+        country:
+          type: string
+          nullable: true
+          example: "France"
+        commissionRate:
+          type: string
+          nullable: true
+          example: "40.00"
+        notes:
+          type: string
+          nullable: true
+        isActive:
+          type: boolean
+          example: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    GalleryCreate:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        contactPerson:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        address:
+          type: string
+          nullable: true
+        city:
+          type: string
+          nullable: true
+        country:
+          type: string
+          nullable: true
+        commissionRate:
+          type: string
+          nullable: true
+          example: "40.00"
+        notes:
+          type: string
+          nullable: true
+        isActive:
+          type: boolean
+          nullable: true
+
+    GalleryUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        contactPerson:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        address:
+          type: string
+          nullable: true
+        city:
+          type: string
+          nullable: true
+        country:
+          type: string
+          nullable: true
+        commissionRate:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        isActive:
+          type: boolean
+          nullable: true
+
+    PieceType:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        name:
+          type: string
+          example: "Vase"
+        description:
+          type: string
+          nullable: true
+          example: "Pièces creuses pour fleurs."
+        isActive:
+          type: boolean
+          example: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    PieceTypeCreate:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        isActive:
+          type: boolean
+          nullable: true
+
+    PieceTypeUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        isActive:
+          type: boolean
+          nullable: true
+
+    PieceSubtype:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        pieceTypeId:
+          type: integer
+        name:
+          type: string
+          example: "Vase opalin"
+        description:
+          type: string
+          nullable: true
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    PieceSubtypeCreate:
+      type: object
+      required: [pieceTypeId, name]
+      properties:
+        pieceTypeId:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+
+    PieceSubtypeUpdate:
+      type: object
+      properties:
+        pieceTypeId:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        isActive:
+          type: boolean
+          nullable: true
+
+    PieceStatus:
+      type: string
+      enum: [workshop, gallery, sold]
+      example: "workshop"
+
+    Piece:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        name:
+          type: string
+          example: "Vase opalin bleu"
+        uniqueId:
+          type: string
+          example: "V-2025-OPALIN-001"
+        pieceTypeId:
+          type: integer
+          nullable: true
+        pieceSubtypeId:
+          type: integer
+          nullable: true
+        dimensions:
+          type: string
+          nullable: true
+          example: "H28 x L12 cm"
+        dominantColor:
+          type: string
+          nullable: true
+          example: "Bleu"
+        description:
+          type: string
+          nullable: true
+        status:
+          $ref: "#/components/schemas/PieceStatus"
+        currentLocation:
+          type: string
+          example: "atelier"
+        galleryId:
+          type: integer
+          nullable: true
+        price:
+          type: string
+          example: "180.00"
+        imageUrl:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    PieceCreate:
+      type: object
+      required: [name, uniqueId, price]
+      properties:
+        name:
+          type: string
+        uniqueId:
+          type: string
+        pieceTypeId:
+          type: integer
+          nullable: true
+        pieceSubtypeId:
+          type: integer
+          nullable: true
+        dimensions:
+          type: string
+          nullable: true
+        dominantColor:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        status:
+          $ref: "#/components/schemas/PieceStatus"
+        currentLocation:
+          type: string
+        galleryId:
+          type: integer
+          nullable: true
+        price:
+          type: string
+        imageUrl:
+          type: string
+          nullable: true
+
+    PieceUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        uniqueId:
+          type: string
+        pieceTypeId:
+          type: integer
+          nullable: true
+        pieceSubtypeId:
+          type: integer
+          nullable: true
+        dimensions:
+          type: string
+          nullable: true
+        dominantColor:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        status:
+          $ref: "#/components/schemas/PieceStatus"
+        currentLocation:
+          type: string
+        galleryId:
+          type: integer
+          nullable: true
+        price:
+          type: string
+        imageUrl:
+          type: string
+          nullable: true
+
+    PieceListPaginated:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Piece"
+        pagination:
+          type: object
+          properties:
+            page:
+              type: integer
+              example: 1
+            pageSize:
+              type: integer
+              example: 12
+            total:
+              type: integer
+              example: 40
+            totalPages:
+              type: integer
+              example: 4
+
+    StockItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        name:
+          type: string
+          example: "Barre de verre borosilicate"
+        type:
+          type: string
+          example: "verre"
+        category:
+          type: string
+          example: "Matière première"
+        currentQuantity:
+          type: string
+          example: "42.00"
+        unit:
+          type: string
+          example: "kg"
+        minimumThreshold:
+          type: string
+          example: "10.00"
+        supplier:
+          type: string
+          nullable: true
+          example: "Verre & Co"
+        notes:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    StockItemCreate:
+      type: object
+      required: [name, type, category, currentQuantity, unit, minimumThreshold]
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        category:
+          type: string
+        currentQuantity:
+          type: string
+        unit:
+          type: string
+        minimumThreshold:
+          type: string
+        supplier:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+
+    StockItemUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        category:
+          type: string
+        currentQuantity:
+          type: string
+        unit:
+          type: string
+        minimumThreshold:
+          type: string
+        supplier:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+
+    StockMovementType:
+      type: string
+      enum: [in, out]
+      example: "out"
+
+    StockMovement:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        stockItemId:
+          type: integer
+          nullable: true
+        type:
+          $ref: "#/components/schemas/StockMovementType"
+        quantity:
+          type: string
+          example: "5.00"
+        reason:
+          type: string
+          example: "Utilisé pour 3 vases opalins"
+        notes:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    StockMovementCreate:
+      type: object
+      required: [type, quantity, reason]
+      properties:
+        stockItemId:
+          type: integer
+          nullable: true
+        type:
+          $ref: "#/components/schemas/StockMovementType"
+        quantity:
+          type: string
+        reason:
+          type: string
+        notes:
+          type: string
+          nullable: true
+
+    StockMovementUpdate:
+      type: object
+      properties:
+        stockItemId:
+          type: integer
+          nullable: true
+        type:
+          $ref: "#/components/schemas/StockMovementType"
+        quantity:
+          type: string
+        reason:
+          type: string
+        notes:
+          type: string
+          nullable: true
+
+    OrderStatus:
+      type: string
+      enum: [pending, processing, shipped, delivered, cancelled]
+      example: "pending"
+
+    Order:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        orderNumber:
+          type: string
+          example: "CMD-2025-001"
+        galleryId:
+          type: integer
+          nullable: true
+        status:
+          $ref: "#/components/schemas/OrderStatus"
+        totalAmount:
+          type: string
+          nullable: true
+          example: "420.00"
+        shippingAddress:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        shippedAt:
+          type: string
+          format: date-time
+          nullable: true
+        deliveredAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    OrderCreate:
+      type: object
+      required: [orderNumber]
+      properties:
+        orderNumber:
+          type: string
+        status:
+          $ref: "#/components/schemas/OrderStatus"
+        galleryId:
+          type: integer
+          nullable: true
+        shippingAddress:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        shippedAt:
+          type: string
+          format: date-time
+          nullable: true
+        deliveredAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    OrderUpdate:
+      type: object
+      properties:
+        orderNumber:
+          type: string
+        status:
+          $ref: "#/components/schemas/OrderStatus"
+        galleryId:
+          type: integer
+          nullable: true
+        shippingAddress:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        shippedAt:
+          type: string
+          format: date-time
+          nullable: true
+        deliveredAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    OrderItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        orderId:
+          type: integer
+        pieceId:
+          type: integer
+          nullable: true
+        price:
+          type: string
+          example: "180.00"
+        createdAt:
+          type: string
+          format: date-time
+
+    OrderItemCreate:
+      type: object
+      required: [orderId, pieceId]
+      properties:
+        orderId:
+          type: integer
+        pieceId:
+          type: integer
+        price:
+          type: string
+          nullable: true
+
+    OrderItemUpdate:
+      type: object
+      properties:
+        orderId:
+          type: integer
+        pieceId:
+          type: integer
+          nullable: true
+        price:
+          type: string
+          nullable: true
+
+    EventType:
+      type: string
+      enum: [exhibition, fair, workshop, sale]
+      example: "exhibition"
+
+    EventStatus:
+      type: string
+      enum: [planned, confirmed, completed, cancelled]
+      example: "planned"
+
+    Event:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        name:
+          type: string
+          example: "Exposition Printemps Lumineux"
+        type:
+          $ref: "#/components/schemas/EventType"
+        venue:
+          type: string
+          nullable: true
+        startDate:
+          type: string
+          format: date-time
+        endDate:
+          type: string
+          format: date-time
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        website:
+          type: string
+          nullable: true
+        participationFee:
+          type: string
+          nullable: true
+        status:
+          $ref: "#/components/schemas/EventStatus"
+        notes:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    EventCreate:
+      type: object
+      required: [name, type, startDate]
+      properties:
+        name:
+          type: string
+        type:
+          $ref: "#/components/schemas/EventType"
+        venue:
+          type: string
+          nullable: true
+        startDate:
+          type: string
+          format: date-time
+        endDate:
+          type: string
+          format: date-time
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        website:
+          type: string
+          nullable: true
+        participationFee:
+          type: string
+          nullable: true
+        status:
+          $ref: "#/components/schemas/EventStatus"
+        notes:
+          type: string
+          nullable: true
+
+    EventUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          $ref: "#/components/schemas/EventType"
+        venue:
+          type: string
+          nullable: true
+        startDate:
+          type: string
+          format: date-time
+        endDate:
+          type: string
+          format: date-time
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        website:
+          type: string
+          nullable: true
+        participationFee:
+          type: string
+          nullable: true
+        status:
+          $ref: "#/components/schemas/EventStatus"
+        notes:
+          type: string
+          nullable: true
+
+    EventPiece:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        eventId:
+          type: integer
+        pieceId:
+          type: integer
+        displayPrice:
+          type: string
+          nullable: true
+        sold:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+
+    EventPieceCreate:
+      type: object
+      required: [pieceId]
+      properties:
+        pieceId:
+          type: integer
+        displayPrice:
+          type: string
+          nullable: true
+        sold:
+          type: boolean
+          nullable: true
+
+    EventPieceUpdate:
+      type: object
+      properties:
+        pieceId:
+          type: integer
+        displayPrice:
+          type: string
+          nullable: true
+        sold:
+          type: boolean
+          nullable: true
+
+    DashboardStats:
+      type: object
+      example:
+        piecesCount: 120
+        galleriesCount: 4
+        ordersCount: 36
+        eventsCount: 5
+
+    LowStockItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        currentQuantity:
+          type: string
+        minimumThreshold:
+          type: string
+        unit:
+          type: string
+
+security:
+  - cookieAuth: []
+
+paths:
+
+  /api/register:
+    post:
+      tags: [Auth]
+      summary: Inscription d’un utilisateur
+      security: []  # public
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterUserRequest"
+      responses:
+        '200':
+          description: Utilisateur créé
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        '400':
+          description: Données invalides ou username déjà pris
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/login:
+    post:
+      tags: [Auth]
+      summary: Connexion utilisateur (username ou email)
+      security: []  # public
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        '200':
+          description: Connexion réussie
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        '400':
+          description: Paramètres manquants
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        '401':
+          description: Identifiants invalides
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/auth/user:
+    get:
+      tags: [Auth]
+      summary: Récupérer l’utilisateur connecté
+      responses:
+        '200':
+          description: Utilisateur courant
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        '401':
+          description: Non authentifié
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        '404':
+          description: Utilisateur introuvable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/logout:
+    post:
+      tags: [Auth]
+      summary: Déconnexion
+      responses:
+        '200':
+          description: Déconnexion OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Déconnexion réussie"
+
+  /api/password/forgot:
+    post:
+      tags: [Auth]
+      summary: Demande de reset mot de passe
+      security: []  # public
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ForgotPasswordRequest"
+      responses:
+        '200':
+          description: Toujours 200 (ne révèle pas si l’email existe)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Si un compte existe, un lien a été envoyé."
+
+  /api/password/reset:
+    post:
+      tags: [Auth]
+      summary: Réinitialiser le mot de passe
+      security: []  # public
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResetPasswordRequest"
+      responses:
+        '200':
+          description: Mot de passe mis à jour
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Mot de passe mis à jour."
+        '400':
+          description: Token invalide/expiré ou mot de passe trop court
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/galleries:
+    get:
+      tags: [Galleries]
+      summary: Lister les galeries
+      parameters:
+        - in: query
+          name: isActive
+          schema:
+            type: boolean
+        - in: query
+          name: q
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Liste des galeries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Gallery"
+    post:
+      tags: [Galleries]
+      summary: Créer une galerie
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GalleryCreate"
+      responses:
+        '201':
+          description: Galerie créée
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Gallery"
+        '400':
+          description: Données invalides
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/galleries/{id}:
+    get:
+      tags: [Galleries]
+      summary: Obtenir une galerie
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Galerie
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Gallery"
+        '400':
+          description: Paramètres invalides
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        '404':
+          description: Galerie introuvable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    patch:
+      tags: [Galleries]
+      summary: Mettre à jour une galerie
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GalleryUpdate"
+      responses:
+        '200':
+          description: Galerie mise à jour
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Gallery"
+        '400':
+          description: Données invalides
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        '404':
+          description: Galerie introuvable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      tags: [Galleries]
+      summary: Supprimer une galerie
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Supprimée
+        '404':
+          description: Galerie introuvable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/piece-types:
+    get:
+      tags: [PieceTypes]
+      summary: Lister les types de pièce
+      parameters:
+        - in: query
+          name: isActive
+          schema:
+            type: boolean
+        - in: query
+          name: q
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Types
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PieceType"
+    post:
+      tags: [PieceTypes]
+      summary: Créer un type de pièce
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PieceTypeCreate"
+      responses:
+        '201':
+          description: Type créé
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PieceType"
+        '400':
+          description: Données invalides
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/piece-types/{id}:
+    get:
+      tags: [PieceTypes]
+      summary: Obtenir un type de pièce
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Type
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PieceType"
+        '400':
+          description: Paramètres invalides
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        '404':
+          description: Type introuvable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    patch:
+      tags: [PieceTypes]
+      summary: Mettre à jour un type de pièce
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PieceTypeUpdate"
+      responses:
+        '200':
+          description: Type mis à jour
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PieceType"
+        '400':
+          description: Données invalides
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        '404':
+          description: Type introuvable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      tags: [PieceTypes]
+      summary: Supprimer un type de pièce
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Supprimé
+        '404':
+          description: Type introuvable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/piece-subtypes:
+    get:
+      tags: [PieceSubtypes]
+      summary: Lister les sous-types
+      parameters:
+        - in: query
+          name: pieceTypeId
+          schema:
+            type: integer
+        - in: query
+          name: onlyActive
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Sous-types
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PieceSubtype"
+    post:
+      tags: [PieceSubtypes]
+      summary: Créer un sous-type
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PieceSubtypeCreate"
+      responses:
+        '201':
+          description: Sous-type créé
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PieceSubtype"
+        '400':
+          description: Données invalides
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/piece-subtypes/{id}:
+    patch:
+      tags: [PieceSubtypes]
+      summary: Mettre à jour un sous-type
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PieceSubtypeUpdate"
+      responses:
+        '200':
+          description: Sous-type mis à jour
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PieceSubtype"
+        '400':
+          description: Données invalides
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        '404':
+          description: Sous-type introuvable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      tags: [PieceSubtypes]
+      summary: Supprimer un sous-type
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Supprimé
+        '404':
+          description: Sous-type introuvable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/pieces:
+    get:
+      tags: [Pieces]
+      summary: Lister les pièces
+      parameters:
+        - in: query
+          name: status
+          schema:
+            $ref: "#/components/schemas/PieceStatus"
+        - in: query
+          name: pieceTypeId
+          schema:
+            type: integer
+        - in: query
+          name: pieceSubtypeId
+          schema:
+            type: integer
+        - in: query
+          name: galleryId
+          schema:
+            type: integer
+        - in: query
+          name: search
+          schema:
+            type: string
+        - in: query
+          name: availableForOrder
+          schema:
+            type: boolean
+        - in: query
+          name: orderId
+          schema:
+            type: integer
+        - in: query
+          name: paginated
+          schema:
+            type: boolean
+        - in: query
+          name: page
+          schema:
+            type: integer
+        - in: query
+          name: pageSize
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Pièces (liste ou objet paginé)
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: array
+                    items:
+                      $ref: "#/components/schemas/Piece"
+                  - $ref: "#/components/schemas/PieceListPaginated"
+    post:
+      tags: [Pieces]
+      summary: Créer une pièce
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PieceCreate"
+      responses:
+        '201':
+          description: Pièce créée
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Piece"
+        '400':
+          description: Données invalides
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/pieces/{id}:
+    get:
+      tags: [Pieces]
+      summary: Obtenir une pièce
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Pièce
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Piece"
+        '400':
+          description: Paramètres invalides
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        '404':
+          description: Pièce introuvable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    patch:
+      tags: [Pieces]
+      summary: Mettre à jour une pièce
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PieceUpdate"
+      responses:
+        '200':
+          description: Pièce mise à jour
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Piece"
+        '400':
+          description: Données invalides
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        '404':
+          description: Pièce introuvable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      tags: [Pieces]
+      summary: Supprimer une pièce
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Supprimée
+        '404':
+          description: Pièce introuvable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/pieces/{id}/image:
+    post:
+      tags: [Pieces]
+      summary: Ajouter une image (upload)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Image ajoutée
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Piece"
+        '400':
+          description: Paramètres ou fichier invalides
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        '404':
+          description: Pièce introuvable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        '500':
+          description: R2 non configuré
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    patch:
+      tags: [Pieces]
+      summary: Remplacer l’image
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Image remplacée
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Piece"
+        '400':
+          description: Paramètres ou fichier invalides
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        '404':
+          description: Pièce introuvable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        '500':
+          description: Erreur R2
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      tags: [Pieces]
+      summary: Supprimer l’image
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Image supprimée
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Piece"
+        '404':
+          description: Pièce introuvable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/stock/items:
+    get:
+      tags: [Stock]
+      summary: Lister les items de stock
+      parameters:
+        - in: query
+          name: type
+          schema:
+            type: string
+        - in: query
+          name: category
+          schema:
+            type: string
+        - in: query
+          name: q
+          schema:
+            type: string
+        - in: query
+          name: lowOnly
+          schema:
+            type: boolean
+            description: Si true, ne retourne que les items en dessous du seuil
+      responses:
+        '200':
+          description: Items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StockItem"
+    post:
+      tags: [Stock]
+      summary: Créer un item de stock
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StockItemCreate"
+      responses:
+        '201':
+          description: Item créé
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockItem"
+        '400':
+          description: Données invalides
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/stock/items/{id}:
+    get:
+      tags: [Stock]
+      summary: Obtenir un item de stock
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockItem"
+        '400':
+          description: Paramètres invalides
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        '404':
+          description: Article introuvable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    patch:
+      tags: [Stock]
+      summary: Mettre à jour un item de stock
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StockItemUpdate"
+      responses:
+        '200':
+          description: Item mis à jour
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockItem"
+        '400':
+          description: Données invalides
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        '404':
+          description: Article introuvable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      tags: [Stock]
+      summary: Supprimer un item de stock
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Supprimé
+        '404':
+          description: Article introuvable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/stock/movements:
+    get:
+      tags: [Stock]
+      summary: Lister les mouvements de stock
+      parameters:
+        - in: query
+          name: stockItemId
+          schema:
+            type: integer
+          description: Filtrer par item de stock
+        - in: query
+          name: from
+          schema:
+            type: string
+            format: date-time
+        - in: query
+          name: to
+          schema:
+            type: string
+            format: date-time
+        - in: query
+          name: limit
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Mouvements
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StockMovement"
+    post:
+      tags: [Stock]
+      summary: Créer un mouvement de stock
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StockMovementCreate"
+      responses:
+        '201':
+          description: Mouvement créé
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockMovement"
+        '400':
+          description: Données invalides
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/stock/movements/{id}:
+    get:
+      tags: [Stock]
+      summary: Obtenir un mouvement de stock
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Mouvement
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockMovement"
+        '400':
+          description: Paramètres invalides
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        '404':
+          description: Mouvement introuvable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    patch:
+      tags: [Stock]
+      summary: Mettre à jour un mouvement de stock
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StockMovementUpdate"
+      responses:
+        '200':
+          description: Mouvement mis à jour
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockMovement"
+        '400':
+          description: Données invalides
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        '404':
+          description: Mouvement introuvable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      tags: [Stock]
+      summary: Supprimer un mouvement de stock
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Supprimé
+        '404':
+          description: Mouvement introuvable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/orders:
+    get:
+      tags: [Orders]
+      summary: Lister les commandes
+      parameters:
+        - in: query
+          name: status
+          schema:
+            $ref: "#/components/schemas/OrderStatus"
+        - in: query
+          name: page
+          schema:
+            type: integer
+        - in: query
+          name: limit
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Commandes
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Order"
+                  total:
+                    type: integer
+    post:
+      tags: [Orders]
+      summary: Créer une commande
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderCreate"
+      responses:
+        '201':
+          description: Commande créée
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        '400':
+          description: Données invalides
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/orders/{id}:
+    get:
+      tags: [Orders]
+      summary: Obtenir une commande
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Commande
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        '400':
+          description: Paramètres invalides
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        '404':
+          description: Commande introuvable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    patch:
+      tags: [Orders]
+      summary: Mettre à jour une commande
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderUpdate"
+      responses:
+        '200':
+          description: Commande mise à jour
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        '400':
+          description: Données invalides
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        '404':
+          description: Commande introuvable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      tags: [Orders]
+      summary: Supprimer une commande
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Supprimée
+        '404':
+          description: Commande introuvable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/orders/{id}/items:
+    get:
+      tags: [Orders]
+      summary: Lister les items d’une commande
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Items de la commande
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OrderItem"
+        '400':
+          description: Paramètres invalides
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/order-items:
+    get:
+      tags: [OrderItems]
+      summary: Lister les items de commande
+      description: Vue globale des items de commande (toutes commandes confondues)
+      responses:
+        '200':
+          description: Items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OrderItem"
+    post:
+      tags: [OrderItems]
+      summary: Créer un item de commande
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderItemCreate"
+      responses:
+        '201':
+          description: Item créé
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderItem"
+        '400':
+          description: Données invalides ou incohérence commande/pièce
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/order-items/{id}:
+    get:
+      tags: [OrderItems]
+      summary: Obtenir un item de commande
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderItem"
+        '404':
+          description: Item introuvable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    patch:
+      tags: [OrderItems]
+      summary: Mettre à jour un item de commande
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderItemUpdate"
+      responses:
+        '200':
+          description: Item mis à jour
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderItem"
+        '404':
+          description: Item introuvable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      tags: [OrderItems]
+      summary: Supprimer un item de commande
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Supprimé
+        '404':
+          description: Item introuvable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/events:
+    get:
+      tags: [Events]
+      summary: Lister les événements
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: string
+        - in: query
+          name: type
+          schema:
+            type: string
+        - in: query
+          name: q
+          schema:
+            type: string
+        - in: query
+          name: from
+          schema:
+            type: string
+            format: date-time
+        - in: query
+          name: to
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Événements
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Event"
+    post:
+      tags: [Events]
+      summary: Créer un événement
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EventCreate"
+      responses:
+        '201':
+          description: Événement créé
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Event"
+        '400':
+          description: Données invalides
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/events/{id}:
+    get:
+      tags: [Events]
+      summary: Obtenir un événement
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Événement
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Event"
+        '400':
+          description: Paramètres invalides
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        '404':
+          description: Événement introuvable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    patch:
+      tags: [Events]
+      summary: Mettre à jour un événement
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EventUpdate"
+      responses:
+        '200':
+          description: Événement mis à jour
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Event"
+        '400':
+          description: Données invalides
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        '404':
+          description: Événement introuvable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      tags: [Events]
+      summary: Supprimer un événement
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Supprimé
+        '404':
+          description: Événement introuvable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/events/{eventId}/pieces:
+    get:
+      tags: [EventPieces]
+      summary: Lister les pièces d’un événement
+      parameters:
+        - in: path
+          name: eventId
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Lignes event-piece
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EventPiece"
+        '400':
+          description: Paramètres invalides
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    post:
+      tags: [EventPieces]
+      summary: Associer une pièce à un événement
+      parameters:
+        - in: path
+          name: eventId
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EventPieceCreate"
+      responses:
+        '201':
+          description: Ligne créée
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventPiece"
+        '400':
+          description: Données invalides
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/event-pieces/{id}:
+    patch:
+      tags: [EventPieces]
+      summary: Mettre à jour une ligne event-piece
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EventPieceUpdate"
+      responses:
+        '200':
+          description: Ligne mise à jour
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventPiece"
+        '400':
+          description: Données invalides
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        '404':
+          description: Ligne introuvable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      tags: [EventPieces]
+      summary: Supprimer une ligne event-piece
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Supprimée
+        '404':
+          description: Ligne introuvable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/dashboard/stats:
+    get:
+      tags: [Dashboard]
+      summary: Statistiques globales pour le dashboard
+      responses:
+        '200':
+          description: Stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardStats"
+
+  /api/r2/object/{b64key}:
+    get:
+      tags: [R2]
+      summary: Proxy sécurisé vers un objet R2
+      parameters:
+        - in: path
+          name: b64key
+          required: true
+          schema:
+            type: string
+          description: Clé encodée base64-url, correspondant à un key commençant par "pieces/"
+      responses:
+        '200':
+          description: Contenu binaire
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '400':
+          description: Clé invalide
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        '403':
+          description: Accès refusé
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        '404':
+          description: Objet introuvable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        '500':
+          description: R2 non configuré ou erreur de lecture
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/health:
+    get:
+      tags: [Health]
+      summary: Health-check simple
+      security: []  # public
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    example: true

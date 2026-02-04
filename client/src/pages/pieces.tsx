@@ -27,8 +27,23 @@ import {
 } from "../lib/pieces.api";
 
 
+/**
+ * Debounce hook : renvoie la valeur seulement après "delay" ms sans changement.
+ * => Empêche d'appeler le backend à chaque frappe.
+ */
+function useDebounce<T>(value: T, delay = 300) {
+  const [debounced, setDebounced] = useState(value);
+
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(id);
+  }, [value, delay]);
+
+  return debounced;
+}
 export default function Pieces() {
-  const [searchQuery, setSearchQuery] = useState("");
+ const [searchInput, setSearchInput] = useState("");
+  const debouncedSearch = useDebounce(searchInput, 350);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<number | "all">("all");
   const [subtypeFilter, setSubtypeFilter] = useState<number | "all">("all");
@@ -40,8 +55,12 @@ export default function Pieces() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-const { data: piecesData, isLoading, error: piecesError } = useQuery<PieceWithSubtype[] | PaginatedPieces>({
-  queryKey: ["/api/pieces", { page, pageSize, statusFilter, typeFilter, subtypeFilter, searchQuery }],
+const { data: piecesData,
+   isLoading, 
+   isFetching,
+   error: piecesError
+   } = useQuery<PieceWithSubtype[] | PaginatedPieces>({
+  queryKey: ["/api/pieces", { page, pageSize, statusFilter, typeFilter, subtypeFilter, search: debouncedSearch }],
   queryFn: async () => {
     return fetchPieces({
       paginated: true,
@@ -50,9 +69,11 @@ const { data: piecesData, isLoading, error: piecesError } = useQuery<PieceWithSu
       status: statusFilter,
       pieceTypeId: typeFilter,
       pieceSubtypeId: subtypeFilter,
-      search: searchQuery,
+      search: debouncedSearch,
     });
   },
+   placeholderData: (prev) => prev, //  anti-flash : on conserve le précédent résultat pendant le refetch
+    staleTime: 15_000,
 });
 
 const pieces: PieceWithSubtype[] = Array.isArray(piecesData)
@@ -62,9 +83,9 @@ const serverPagination = !Array.isArray(piecesData) && piecesData?.pagination ? 
 
   const { data: pieceTypes = [], error: pieceTypesError } = useQuery({
     queryKey: ["/api/piece-types"],
-    queryFn: async () => {
-      return fetchPieceTypes();
-    },
+    queryFn: async () => 
+      fetchPieceTypes(),
+    staleTime: 60_000,
   });
 
   // Map id -> name pour afficher/filtrer par nom de type même sans join côté backend
@@ -76,16 +97,14 @@ const serverPagination = !Array.isArray(piecesData) && piecesData?.pagination ? 
   const { data: subtypeOptions = [] } = useQuery<SubtypeOption[]>({
     queryKey: ["/api/piece-subtypes", { pieceTypeId: typeFilter }],
     enabled: typeFilter !== "all",
-    queryFn: async () => {
-      return fetchPieceSubtypes(Number(typeFilter));
-    },
+    queryFn: async () => fetchPieceSubtypes(Number(typeFilter)),
+    staleTime: 60_000,
   });
 
    const { data: allSubtypes = [], error: allSubtypesError } = useQuery<SubtypeOption[], Error>({
     queryKey: ["/api/piece-subtypes", "all"], 
-    queryFn: async () => {
-      return fetchAllSubtypes();
-    },
+     queryFn: async () => fetchAllSubtypes(),
+    staleTime: 60_000,
   });
 
     const subtypeNameById = useMemo<Record<string, string>>(
@@ -124,46 +143,39 @@ const serverPagination = !Array.isArray(piecesData) && piecesData?.pagination ? 
 
 
 // Si côté serveur on pagine et filtre déjà, on n'applique plus le filtrage côté client
-const filteredPieces = useMemo(
-    () =>
-      Array.isArray(pieces)
-        ? pieces.filter((piece) => {
-            const typeName =
-              typeNameById[String(piece.pieceTypeId ?? "")] ??
-              piece.pieceType?.name ??
-                            "";
+ const filteredPieces = useMemo(() => {
+    if (!Array.isArray(pieces)) return [];
 
-            const matchesSearch =
-              piece.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-              typeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-              (piece.description ?? "")
-                .toLowerCase()
-                .includes(searchQuery.toLowerCase());
+    const q = debouncedSearch.trim().toLowerCase();
 
-            const matchesStatus =
-              statusFilter === "all" || piece.status === statusFilter;
+    return pieces.filter((piece) => {
+      const typeName =
+        typeNameById[String(piece.pieceTypeId ?? "")] ??
+        piece.pieceType?.name ??
+        "";
 
-            const matchesType =
-              typeFilter === "all" ||
-              Number(piece.pieceTypeId ?? -1) === typeFilter;
+      const matchesSearch =
+        q.length === 0 ||
+        piece.name.toLowerCase().includes(q) ||
+        typeName.toLowerCase().includes(q) ||
+        (piece.description ?? "").toLowerCase().includes(q);
 
-             const matchesSubtype =
-            subtypeFilter === "all" ||
-            Number(piece.pieceSubtypeId ?? -1) === subtypeFilter;
+      const matchesStatus = statusFilter === "all" || piece.status === statusFilter;
+      const matchesType = typeFilter === "all" || Number(piece.pieceTypeId ?? -1) === typeFilter;
+      const matchesSubtype =
+        subtypeFilter === "all" || Number(piece.pieceSubtypeId ?? -1) === subtypeFilter;
 
-            return matchesSearch && matchesStatus && matchesType && matchesSubtype;
-          })
-        : [],
-    [pieces, typeNameById, searchQuery, statusFilter, typeFilter, subtypeFilter]
-  );
+      return matchesSearch && matchesStatus && matchesType && matchesSubtype;
+    });
+  }, [pieces, typeNameById, debouncedSearch, statusFilter, typeFilter, subtypeFilter]);
 
   // Reset page to 1 quand filtres ou recherche changent
   useEffect(() => {
     setPage(1);
-  }, [searchQuery, statusFilter, typeFilter, subtypeFilter]);
+  }, [debouncedSearch, statusFilter, typeFilter, subtypeFilter]);
 
 
-  if (isLoading) {
+  if (isLoading && !piecesData) {
     return (
       <div className="py-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -235,8 +247,8 @@ const filteredPieces = useMemo(
               type="text"
               placeholder="Rechercher une pièce..."
               className="pl-10"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
             />
           </div>
 

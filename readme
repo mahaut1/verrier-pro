@@ -1,270 +1,230 @@
- VerrierPro 
+# VerrierPro
 
-Système de gestion complet pour artisans verriers professionnels
+Application professionnelle pour artisans verriers — gestion des pièces, galeries, commandes, stock et évènements.
 
-VerrierPro est une plateforme web moderne conçue spécialement pour les artisans verriers. Elle couvre l'intégralité du workflow professionnel : de la création artistique jusqu'à la vente, en passant par la gestion des galeries partenaires et l'optimisation des stocks.
+##  Présentation
 
- Fonctionnalités Principales
+VerrierPro est une plateforme complète permettant à un artisan verrier de gérer :
+- son catalogue de créations,
+- ses galeries partenaires,
+- ses évènements (expositions),
+- ses commandes,
+- son stock de matériaux.
 
-  Gestion des Créations
-- **Catalogue personnel** : Répertoire complet des pièces en verre
-- **Types configurables et éditables** : Création, modification, suppression de types directement depuis l’interface (bouton "Gérer les types")
-- **Types triés** : Les types sont toujours affichés par ordre alphabétique dans les menus déroulants
-- **Suivi statuts** : De la création à la livraison
-- **Upload photos** : Documentation visuelle haute qualité
-- **Localisation** : Atelier, galerie, client en temps réel
- Ergonomie et Interface
-- **Actions rapides** : Boutons "Nouvelle pièce", "Nouveau type", "Gérer les types" alignés et accessibles sur la page principale
-- **Gestion via dialogues** : Modification et suppression des types/sous-types dans des pop-ups dédiés
-- **Notifications** : Messages de succès ou d’erreur affichés lors des modifications ou suppressions
- Filtrage et Recherche
-- **Filtres dynamiques** : Recherche et filtrage des pièces, types et sous-types optimisés
-- **Menus déroulants** : Affichage des types triés pour une sélection facilitée
- Techniques et Sécurité
-- **React Query** : Rafraîchissement automatique des listes après modification/suppression
-- **Validation** : Sécurité et validation côté client et serveur pour toutes les actions sensibles
+Le projet repose sur une architecture moderne :  
+**React + TypeScript + Vite (frontend)** et **Express + Drizzle ORM + PostgreSQL (backend)**.
 
- Réseau de Galeries
-- **Partenaires multiples** : Gestion complète des galeries
-- **Taux commission** : Configuration par partenaire
-- **Suivi exposition** : Pièces exposées par lieu
-- **Contacts détaillés** : Coordonnées et notes relationnelles
+---
 
- Commandes et Ventes
-- **Workflow complet** : De la commande à la livraison
-- **Calcul automatique** : Totaux et commissions
-- **Gestion statuts** : Pending → Processing → Shipped → Delivered
-- **Historique client** : Suivi des relations commerciales
+## Technologies
 
-Gestion de Stock
-- **Matériaux spécialisés** : Verres colorés, outils, consommables
-- **Seuils d'alerte** : Notifications stock bas automatiques
-- **Mouvements tracés** : Entrées/sorties documentées
-- **Fournisseurs** : Carnet d'adresses intégré
+### Frontend
+- React 18 + TypeScript  
+- Vite  
+- TailwindCSS  
+- shadcn/ui  
+- TanStack React Query  
+- Zod (validation)
 
- Tableau de Bord
-- **Vue d'ensemble** : Statistiques production et ventes
-- **Activité récente** : Dernières modifications
-- **Alertes** : Stock critique, commandes urgentes
-- **Performance** : Métriques par galerie et période
+### Backend
+- Node.js + Express  
+- TypeScript (build séparé)  
+- Drizzle ORM + PostgreSQL  
+- Zod (validation forte des routes)  
+- R2 (Cloudflare) pour le stockage d’images
 
- Architecture Technique
+### DevOps
+- Railway (hébergement)  
+- Docker (dev local recommandé)  
+- Jest (tests backend + frontend)
 
-Technologies
+---
 
-Frontend:  React 18 + TypeScript + React Router
-Backend:   Express.js + TypeScript + Drizzle ORM
-Database:  PostgreSQL (Neon Cloud + Docker local)
-UI:        Tailwind CSS + shadcn/ui + Radix UI
-Auth:      Sessions Express + bcrypt
-Build:     Vite + ESBuild
-State:     TanStack React Query
-```
+##  Structure du projet
 
-### Structure du Projet
 ```
 VerrierPro/
-├── client/                 # Frontend React
+│
+├── client/                  # Frontend React
 │   ├── src/
-│   │   ├── components/     # Composants réutilisables
-│   │   ├── pages/          # Pages de l'application
-│   │   ├── hooks/          # Hooks React personnalisés
-│   │   └── lib/            # Utilitaires frontend
-├── server/                 # Backend Express
-│   ├── routes/             # Routes API modulaires
-│   ├── storage/            # Couche d'accès données
-│   └── middleware/         # Middlewares Express
-├── shared/                 # Code partagé
-│   └── schema.ts           # Schéma base de données
-└── uploads/                # Stockage fichiers images
+│   │   ├── components/
+│   │   ├── pages/
+│   │   ├── hooks/
+│   │   └── lib/
+│   └── index.html
+│
+├── server/                  # Backend Express
+│   ├── routes/
+│   ├── storage/
+│   ├── lib/
+│   └── index-local.ts
+│
+├── shared/                  # Types et schémas communs
+│   └── schema.ts
+│
+├── migrations/              # Migrations Drizzle
+└── uploads/                 # Stockage local des images
 ```
 
- Installation et Démarrage
+---
 
-Prérequis
-- **Node.js** 18+ et npm
-- **PostgreSQL** (Docker recommandé)
-- **Git** pour le clonage
+##  Installation
 
-Installation Rapide
-
-```bash
-# 1. Cloner le projet
+### 1. Cloner
+```
 git clone https://github.com/mahaut1/verrier-pro
-cd VerrierPro
+cd verrier-pro
+```
 
-# 2. Installer les dépendances
+### 2. Installer les dépendances
+```
 npm install
+```
 
-# 3. Configuration environnement
+### 3. Configurer l’environnement
+```
 cp .env.example .env.local
-# Éditer .env.local avec vos variables
+```
+Puis éditer les variables (DATABASE_URL, R2, SESSION_SECRET, etc.)
 
-# 4. Base de données (Docker)
+### 4. Démarrer Postgres (via Docker)
+```
 docker-compose up -d
+```
 
-# 5. Migration base
+### 5. Appliquer les migrations
+```
 npm run db:push
+```
 
-# 6. Démarrage développement
+### 6. Lancer le mode développement
+```
 npm run dev
 ```
 
-**Accès** : http://localhost:5000
+Accès local : **http://localhost:5000**
 
-```
+---
+
+##  Scripts utiles
+
+| Commande | Description |
+|----------|-------------|
+| `npm run dev` | Lance frontend + backend |
+| `npm run dev:client` | Front uniquement |
+| `npm run dev:server` | Backend uniquement |
+| `npm run build` | Build complet |
+| `npm run start` | Démarrage en production |
+| `npm run db:push` | Applique la structure Drizzle |
+| `npm run test` | Lancement des tests Jest |
+
+---
 
 ## 🗄️ Base de Données
 
-### Modèle Relationnel
-Le système utilise **11 tables PostgreSQL** optimisées :
+### Tables principales
+- **users**
+- **sessions**
+- **pieces**
+- **piece_types**
+- **piece_subtypes**
+- **galleries**
+- **orders**
+- **order_items**
+- **stock_items**
+- **stock_movements**
+- **events**
+- **event_pieces**
 
-- **users** : Comptes artisans
-- **sessions** : Sessions utilisateur  
-- **pieces** : Créations verrières
-- **piece_types** : Catégories de pièces
-- **galleries** : Galeries partenaires
-- **orders** : Commandes clients
-- **order_items** : Éléments de commande
-- **stock_items** : Articles en stock
-- **stock_movements** : Mouvements de stock
-- **event**: Evenements
-- ** event-pieces**: Evenements pièces
+---
 
-### Migration
-```bash
-# Appliquer le schéma
-npm run db:push
+##  Fonctionnalités principales
 
-# Développement local avec Docker
-npm run db:push --config=drizzle-docker.config.ts
-```
+### ✔ Catalogue de pièces
+- CRUD complet
+- Upload & remplacement d’images
+- Filtres : statut, type, sous-type, galerie
+- Recherche textuelle
+- Pagination serveur / client
+- Gestion automatique du statut selon galerie
 
- Utilisation
+### ✔ Types & sous-types
+- Gestion intégrée via dialogue dans la page des pièces
+- Tri alphabétique
+- Activation/désactivation
 
- Premier Démarrage
+### ✔ Galeries
+- CRUD complet
+- Filtrage actif/inactif
+- Assignation automatique des pièces via commandes
 
-1. **Inscription** : Créer votre compte artisan
-2. **Types de pièces** : Définir vos catégories (Poissons, Vases, etc.)
-3. **Première création** : Ajouter une pièce avec photo
-4. **Galerie** : Configurer votre premier partenaire
-5. **Stock** : Initialiser vos matériaux de base
+### ✔ Commandes
+- Commandes + items
+- Cohérences galerie/pièce contrôlées côté backend
+- Prix configurable (hérité de la pièce si non fourni)
 
-### Workflow Quotidien
+### ✔ Stock
+- Articles et mouvements
+- Filtres : type, catégorie, texte
+- Support des alertes “stock bas”
 
-1. **Matin** : Consulter tableau de bord et alertes
-2. **Production** : Mettre à jour statuts pièces
-3. **Commercial** : Traiter nouvelles commandes
-4. **Soir** : Actualiser stock et planning
+### ✔ Évènements
+- CRUD complet
+- Ajout de pièces exposées
+- Gestion prix d’exposition et état vendu
 
-### Navigation Principale
+### ✔ Authentification sécurisée
+- Sessions httpOnly
+- Bcrypt
+- Routes protégées
+- Reset password complet (email + token sécurisé)
 
-- ** Accueil** : Vue d'ensemble et statistiques
-- ** Créations** : Gestion du portfolio artistique
-- ** Galeries** : Réseau de partenaires
-- ** Commandes** : Suivi commercial
-- ** Stock** : Gestion matières premières
-- ** Evenements**: Gestion des évènements
-
-## 🔧 Scripts Disponibles
-
-```bash
-# Développement
-npm run dev          # Serveur développement avec hot reload
-npm run check        # Vérification types TypeScript
-
-# Production  
-npm run build        # Build optimisé pour production
-npm run start        # Démarrage serveur production
-npm run start:prod:local   # Build + lancement serveur en mode préprod (avec .env.prod)
-
-# Base de données
-npm run db:push      # Migration schéma vers base
-```
+---
 
 ##  Sécurité
 
-### Authentification
-- **Sessions sécurisées** : httpOnly cookies avec expiration
-- **Mots de passe** : Hashage bcrypt avec salt
-- **Protection CSRF** : Express sessions intégrées
-- **Rate limiting** : Protection contre les attaques
-
-### Données
-- **Isolation multi-tenant** : Séparation stricte par artisan
-- **Validation complète** : Côté client et serveur
-- **Audit trail** : Traçabilité des modifications
-- **Backup** : Sauvegardes automatiques base
-
-##  Déploiement
-
-### Environnements Supportés
-
-#### Développement Local
-```bash
-# PostgreSQL Docker
-docker-compose up -d
-npm run dev
-```
-
-#### Production Cloud
-- **Railway** : Déploiement automatique, BDD prod
-- **Neon** : Base données PostgreSQL cloud
-- **Variables d'environnement** configurées
-
-
-
-##  Performance
-
-### Métriques Optimisées
-- **Frontend** : Cache TanStack Query 
-- **Backend** : Index PostgreSQL sur requêtes fréquentes
-- **Images** : Compression et formats optimisés
-- **Bundle** : Code splitting et lazy loading
-
-### Capacités
-- **Utilisateurs** : Multi-tenant illimité
-- **Pièces** : Milliers par artisan
-- **Images** : 5MB max par fichier
-- **Requêtes** : <100ms temps réponse typique
-
-## 🛠️ Développement
-
-### Contribution
-1. **Fork** le projet
-2. **Branch** feature (`git checkout -b feature/nouvelle-fonctionnalite`)
-3. **Commit** (`git commit -m 'Ajout nouvelle fonctionnalité'`)
-4. **Push** (`git push origin feature/nouvelle-fonctionnalite`)  
-5. **Pull Request** avec description détaillée
-
-### Standards Code
-- **TypeScript strict** : Type safety complète
-- **ESLint** : Linting automatique
-- **Prettier** : Formatage cohérent
-- **Tests** : Jest pour backend, testing-library frontend
-
-### Architecture Patterns
-- **Domain Driven Design** : Logique métier centralisée
-- **Repository Pattern** : Abstraction accès données
-- **Command Query Separation** : Lecture/écriture séparées
-
-
+- Cookies de session httpOnly  
+- Validation **Zod** sur *toutes* les routes  
+- Isolation stricte par `userId`  
+- Suppression des sessions après reset password  
+- Protection R2: proxy sécurisé avec validation de clés  
+- Éviction du Path Traversal  
+- Upload images filtré (MIME + taille ≤ 3MB)
 
 ---
 
-##  Pourquoi VerrierPro ?
-### Pour les Artisans
- **Gain temps** : -85% tâches administratives  
- **Professionnalisation** : Image client renforcée  
- **Croissance** : Outils d'expansion intégrés  
- **Spécialisé** : Conçu pour le métier  
+##  Tests
 
+### Backend :
+- Tests unitaires Drizzle & validation Zod
+- Tests d’intégration des endpoints avec supertest
 
-
----
-
-**VerrierPro** - *Transformer l'art du verre par la technologie*
+### Frontend :
+- Testing Library  
+- Correction de plusieurs erreurs JSX dans l'état du projet
 
 ---
 
-*Développé avec ❤️ pour la communauté des artisans verriers*
+##  Roadmap 
+
+- Ajout d’une documentation **OpenAPI**  
+- Export PDF (documents de commande + pièces)  
+- Système multi-rôles (admin, assistant, galerie)  
+- Dashboard avancé avec graphiques  
+- Notifications système (stock bas, pièce vendue, etc.)
+
+---
+
+## ❤️ Pourquoi VerrierPro ?
+
+Pour fournir aux artisans verriers :
+- un vrai outil professionnel
+- un gain de temps quotidien
+- une gestion claire de leurs créations
+- une image moderne et soignée auprès des galeries/clients
+
+---
+
+Développé avec passion ✨  
+*Projet éducatif devenu plateforme complète*
+

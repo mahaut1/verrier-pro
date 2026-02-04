@@ -323,7 +323,7 @@ export const insertUserSchema = z.object({
   email: z.string().email("Email invalide"),
   firstName: z.string().min(1, "Prénom requis"),
   lastName: z.string().min(1, "Nom requis"),
-  role: roleEnum.default("artisan"),  
+  role: roleEnum.default("artisan"), // ✅ 
 });
 
 

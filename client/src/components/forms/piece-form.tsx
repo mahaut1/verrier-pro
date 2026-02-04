@@ -13,6 +13,7 @@ import {Form,FormControl,FormField,FormItem,FormLabel,FormMessage} from "@/compo
 import {DialogHeader,DialogTitle, Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import NewPieceTypeForm from "./new_piece_type_form";
 import NewPieceSubtypeForm from "./new-piece-subtype-form";
+import { ApiError } from "../../lib/api-error";
 
 const formSchema = insertPieceSchema
   .extend({
@@ -102,13 +103,40 @@ export default function PieceForm({ onSuccess }: PieceFormProps) {
       form.reset();
       onSuccess?.();
     },
-    onError: (error: any) => {
-      toast({
-        title: "Erreur",
-        description: error.message || "Une erreur est survenue lors de la création de la pièce.",
-        variant: "destructive",
+onError: (error: unknown) => {
+  // Erreur renvoyée par apiRequest
+  if (error instanceof ApiError) {
+    // Si c'est une erreur de validation (400) avec détails par champ
+    if (error.status === 400 && error.body?.errors) {
+      error.body.errors.forEach((e) => {
+        const fieldPath = Array.isArray(e.path) ? e.path[0] : e.path;
+        if (typeof fieldPath === "string") {
+          form.setError(fieldPath as keyof FormData, {
+            type: "server",
+            message: e.message,
+          });
+        }
       });
-    },
+    }
+
+    toast({
+      title: "Erreur",
+      description: error.message,
+      variant: "destructive",
+    });
+    return;
+  }
+
+  // Fallback générique
+  toast({
+    title: "Erreur",
+    description:
+      (error as any)?.message ||
+      "Une erreur est survenue lors de la création de la pièce.",
+    variant: "destructive",
+  });
+},
+
   });
   const onSubmit = (data: FormData) => {
     createPieceMutation.mutate(data);

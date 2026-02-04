@@ -12,7 +12,7 @@ const isProd = process.env.NODE_ENV === "production";
 if (!isProd) {
   const envPath = path.resolve(process.cwd(), ".env");
   if (fs.existsSync(envPath)) {
-    dotenv.config({ path: envPath });
+    dotenv.config({ path: envPath, override: true  });
     console.log("✅ Variables chargées depuis .env");
   }
 } else {
@@ -22,6 +22,8 @@ if (!isProd) {
 console.log("DATABASE_URL:", process.env.DATABASE_URL ? "CHARGÉE" : "❌ MANQUANTE");
 console.log("SESSION_SECRET:", process.env.SESSION_SECRET ? "CHARGÉE" : "❌ MANQUANTE");
 console.log("NODE_ENV:", process.env.NODE_ENV);
+console.log("DATABASE_URL RAW =", process.env.DATABASE_URL);
+console.log("DATABASE_URL LENGTH =", process.env.DATABASE_URL?.length);
 
 import express, { type Request, Response, NextFunction } from "express";
 import { serveStatic, log } from "./vite.js";

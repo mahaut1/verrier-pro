@@ -1,4 +1,5 @@
 import { QueryClient } from "@tanstack/react-query";
+import { ApiError, type ApiErrorBody } from "./api-error";
 
 export async function apiRequest<T = unknown>(
   method: string,
@@ -23,17 +24,20 @@ export async function apiRequest<T = unknown>(
   const ct = res.headers.get("content-type") ?? "";
   if (!res.ok) {
     let message = `Erreur ${res.status}`;
-    try {
+    let body: ApiErrorBody | undefined;
+     try {
       if (ct.includes("application/json")) {
-        const j = (await res.json()) as { message?: string };
-        if (j?.message) message = j.message;
+        body = (await res.json()) as ApiErrorBody;
+        if (body?.message) message = body.message;
       } else {
         const t = await res.text();
         if (t) message = t;
       }
     } catch {
+      // on laisse le message par défaut
     }
-    throw new Error(message);
+
+    throw new ApiError(res.status, message, body);
   }
   if (res.status === 204) {
     // @ts-expect-error: volontaire pour les mutations sans retour
