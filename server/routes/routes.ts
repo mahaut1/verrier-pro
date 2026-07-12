@@ -16,6 +16,7 @@ import { registerEventPieceRoutes } from './routes-events-pieces.js';
 import { registerEventRoutes } from './routes-events.js';
 import { registerDashboardRoutes } from './routes-dashboard.js';
 import { registerPieceSubtypeRoutes } from './routes-piece-subtypes.js';
+import { registerChatbotContextRoutes } from "./routes-chatbot-context.js";
 
 const MemStore = MemoryStore(session);
 
@@ -82,7 +83,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerEventRoutes(app, requireAuth);
   registerDashboardRoutes(app, requireAuth);
   registerPieceSubtypeRoutes(app, requireAuth);
-
+registerChatbotContextRoutes(app);
   app.get('/api/health', (_req, res) => res.json({ ok: true }));
   
   //  Garde anti-fallback SPA pour /api/*
