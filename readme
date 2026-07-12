@@ -193,17 +193,22 @@ Accès local : **http://localhost:5000**
 
 ---
 
-##  Tests
+## Tests
 
-### Backend :
-- Tests unitaires Drizzle & validation Zod
-- Tests d’intégration des endpoints avec supertest
+Les tests sont exécutés automatiquement à chaque push grâce à GitHub Actions.
 
-### Frontend :
-- Testing Library  
-- Correction de plusieurs erreurs JSX dans l'état du projet
+### Backend
 
----
+* Tests de validation avec Zod
+* Tests d’intégration des endpoints avec Supertest
+* Tests liés à la base de données PostgreSQL
+
+### Frontend
+
+* Tests de rendu avec Testing Library
+
+La pipeline génère également un rapport de couverture conservé sous forme d’artefact GitHub Actions.
+
 
 ##  Roadmap 
 
@@ -222,6 +227,13 @@ Pour fournir aux artisans verriers :
 - un gain de temps quotidien
 - une gestion claire de leurs créations
 - une image moderne et soignée auprès des galeries/clients
+
+### DevOps
+
+* Railway (hébergement et déploiement automatique)
+* GitHub Actions (intégration continue, tests et génération de la couverture)
+* Docker (environnement de développement local)
+* Jest (tests backend et frontend)
 
 ---
 
