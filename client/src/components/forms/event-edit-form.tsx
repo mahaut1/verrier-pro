@@ -105,9 +105,12 @@ export default function EventEditForm({ event, onSuccess }: Props) {
   const [search, setSearch] = useState("");
   const [selectedPieceIds, setSelectedPieceIds] = useState<number[]>([]);
   const [priceOverride, setPriceOverride] = useState<Record<number, string>>({});
-
   const addablePieces = useMemo(() => {
-    let list = pieces.filter((p) => !alreadyInEvent.has(p.id));
+let list = pieces.filter(
+  (p) =>
+    !alreadyInEvent.has(p.id) &&
+    !["sold", "gift", "broken"].includes(p.status)
+);
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(

@@ -91,8 +91,11 @@ export default function OrderEditForm({ order, onSuccess }: OrderEditFormProps) 
 
   // propose seulement les pièces non déjà liées
   const addablePieces = useMemo(() => {
-    let list = pieces.filter((p) => !alreadyInOrder.has(p.id));
-
+let list = pieces.filter(
+  (p) =>
+    !alreadyInOrder.has(p.id) &&
+    !["sold", "gift", "broken"].includes(p.status)
+);
     // filtre galerie
     if (galleryFilter === "order") {
       if (order.galleryId != null) {
