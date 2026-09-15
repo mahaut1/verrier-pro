@@ -330,7 +330,7 @@ const serverPagination = !Array.isArray(piecesData) && piecesData?.pagination ? 
                       Total pièces
                     </dt>
                     <dd className="text-lg font-medium text-gray-900">
-                      {filteredPieces.length}
+                    {serverPagination ? serverPagination.total : filteredPieces.length}
                     </dd>
                   </dl>
                 </div>
