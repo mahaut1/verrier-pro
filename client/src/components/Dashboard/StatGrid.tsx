@@ -21,9 +21,6 @@ async function getJson<T>(url: string): Promise<T> {
 }
 
 function percentChange(prev: number, curr: number): number | null {
-  if (prev === 0 && curr === 0) return 0;
-  if (prev === 0 && curr > 0) return 100;
-  if (prev === 0 && curr < 0) return -100;
   if (prev === 0) return null;
   return ((curr - prev) / prev) * 100;
 }
@@ -56,10 +53,17 @@ export default function StatsGrid() {
     );
   }
 
-  const piecesDelta = percentChange(stats.piecesPrevMonth, stats.piecesThisMonth);
-  const piecesChangeLabel =
-    piecesDelta === null ? "—"
-    : `${piecesDelta > 0 ? "+" : ""}${Math.round(piecesDelta)}% ce mois`;
+const piecesDelta = percentChange(
+  stats.piecesPrevMonth,
+  stats.piecesThisMonth
+);
+
+const piecesChangeLabel =
+  piecesDelta === null
+    ? stats.piecesThisMonth > 0
+      ? `${stats.piecesThisMonth} nouvelle${stats.piecesThisMonth > 1 ? "s" : ""} pièce${stats.piecesThisMonth > 1 ? "s" : ""} ce mois`
+      : "Aucune nouvelle pièce ce mois"
+    : `${piecesDelta > 0 ? "+" : ""}${Math.round(piecesDelta)}% vs mois dernier`;
   const piecesChangeColor =
     piecesDelta == null ? "text-gray-600"
     : piecesDelta > 0 ? "text-green-600"
