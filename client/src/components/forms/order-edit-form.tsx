@@ -58,7 +58,12 @@ export default function OrderEditForm({ order, onSuccess }: OrderEditFormProps) 
     queryKey: ["/api/orders", order.id, "items"],
     queryFn: () => getJson<OrderItem[]>(`/api/orders/${order.id}/items`),
   });
-
+// Toutes les pièces déjà présentes dans des commandes
+const allItemsQ = useQuery<OrderItem[], Error>({
+  queryKey: ["/api/order-items"],
+  queryFn: () => getJson<OrderItem[]>("/api/order-items"),
+});
+const allItems: OrderItem[] = allItemsQ.data ?? [];
   const galleries: Gallery[] = galleriesQ.data ?? [];
   const pieces: Piece[] = piecesQ.data ?? [];
   const items: OrderItem[] = itemsQ.data ?? [];
@@ -85,15 +90,15 @@ export default function OrderEditForm({ order, onSuccess }: OrderEditFormProps) 
   const [selectedPieceIds, setSelectedPieceIds] = useState<number[]>([]);
   const [priceOverride, setPriceOverride] = useState<Record<number, string>>({});
 
-  const alreadyInOrder = new Set(
-    items.map((it) => it.pieceId!).filter(Boolean) as number[]
-  );
 
+const alreadyOrdered = new Set(
+  allItems.map((it) => it.pieceId!).filter(Boolean) as number[]
+);
   // propose seulement les pièces non déjà liées
   const addablePieces = useMemo(() => {
 let list = pieces.filter(
   (p) =>
-    !alreadyInOrder.has(p.id) &&
+    !alreadyOrdered.has(p.id) &&
     !["sold", "gift", "broken"].includes(p.status)
 );
     // filtre galerie
@@ -120,7 +125,7 @@ let list = pieces.filter(
       );
     }
     return list;
-  }, [pieces, alreadyInOrder, galleryFilter, search, order.galleryId]);
+  }, [pieces, alreadyOrdered, galleryFilter, search, order.galleryId]);
 
   // si on change la galerie de la commande, nettoyer sélection incompatible
   useEffect(() => {

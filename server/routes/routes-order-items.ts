@@ -53,6 +53,25 @@ export function registerOrderItemRoutes(app: Express, requireAuth: RequestHandle
       }
       const piece = await storage.getPieceById(userId, input.pieceId);
       if (!piece) return res.status(404).json({ message: "Pièce introuvable" });
+ // Vérifier que la pièce est disponible
+if (["sold", "gift", "broken"].includes(piece.status)) {
+  return res.status(400).json({
+    message: "Cette pièce n'est plus disponible",
+  });
+}
+
+// Vérifier que la pièce n'est pas déjà associée à une commande
+const existingItems = await storage.listOrderItems(userId);
+
+const existingItem = existingItems.find(
+  (item) => item.pieceId === input.pieceId
+);
+
+if (existingItem) {
+  return res.status(400).json({
+    message: "Cette pièce est déjà associée à une commande",
+  });
+}
       // Cohérence galerie
       if (order.galleryId) {
         if (piece.galleryId && piece.galleryId !== order.galleryId) {
