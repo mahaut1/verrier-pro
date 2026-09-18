@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
-import {insertOrderSchema, type Gallery, type Piece,} from "@shared/schema";
+import {insertOrderSchema, type Gallery, type Piece, type OrderItem,} from "@shared/schema";
 import { useToast } from "../../hooks/useToast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,10 +39,23 @@ export default function OrderForm({ onSuccess }: { onSuccess?: () => void }) {
     queryKey: ["/api/pieces"],
     queryFn: () => getJson<Piece[]>("/api/pieces"),
   });
-
+const { data: orderItemsData } = useQuery<OrderItem[], Error>({
+  queryKey: ["/api/order-items"],
+  queryFn: () => getJson<OrderItem[]>("/api/order-items"),
+});
   const galleries: Gallery[] = galleriesData ?? [];
   const pieces: Piece[] = piecesData ?? [];
+  const orderItems: OrderItem[] = orderItemsData ?? [];
 
+const alreadyOrdered = useMemo(
+  () =>
+    new Set(
+      orderItems
+        .map((item) => item.pieceId)
+        .filter((id): id is number => id != null)
+    ),
+  [orderItems]
+);
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -62,19 +75,32 @@ export default function OrderForm({ onSuccess }: { onSuccess?: () => void }) {
   const galleryId = form.watch("galleryId"); // number | null
 
   const filteredPieces = useMemo(() => {
-    let list = pieces;
-    if (galleryId != null) list = list.filter((p) => p.galleryId === galleryId);
-    if (pieceSearch.trim()) {
-      const q = pieceSearch.toLowerCase();
-      list = list.filter(
-        (p) =>
-          p.name.toLowerCase().includes(q) ||
-          (p.uniqueId ?? "").toLowerCase().includes(q) ||
-          (p.dominantColor ?? "").toLowerCase().includes(q)
-      );
-    }
-    return list;
-  }, [pieces, galleryId, pieceSearch]);
+  // Ne proposer que les pièces réellement disponibles
+  let list = pieces.filter(
+    (p) =>
+      !alreadyOrdered.has(p.id) &&
+      !["sold", "gift", "broken"].includes(p.status)
+  );
+
+  // Si une galerie est sélectionnée, ne montrer que ses pièces
+  if (galleryId != null) {
+    list = list.filter((p) => p.galleryId === galleryId);
+  }
+
+  // Recherche par nom, UID ou couleur
+  if (pieceSearch.trim()) {
+    const q = pieceSearch.toLowerCase();
+
+    list = list.filter(
+      (p) =>
+        p.name.toLowerCase().includes(q) ||
+        (p.uniqueId ?? "").toLowerCase().includes(q) ||
+        (p.dominantColor ?? "").toLowerCase().includes(q)
+    );
+  }
+
+  return list;
+}, [pieces, alreadyOrdered, galleryId, pieceSearch]);
 
   // si on change de galerie, on garde seulement les pièces compatibles
   useEffect(() => {
